@@ -24,12 +24,12 @@ fn model(app: &App) -> Model {
     system.add_attractor(attractor);
     let attractor = Attractor::new(vec2( planet_x, 0.0), vec2(0.0,  (1000.0/planet_x).sqrt()), 100.0, 150.0);
     system.add_attractor(attractor);
-    let attractor = Attractor::new(vec2(0.0, -planet_x), vec2(-(1000.0/planet_x).sqrt(), 0.0), 100.0, 150.0);
+    let attractor = Attractor::new(vec2(0.0, -planet_x), vec2( (1000.0/planet_x).sqrt(), 0.0), 100.0, 150.0);
     system.add_attractor(attractor);
-    let attractor = Attractor::new(vec2(0.0,  planet_x), vec2( (1000.0/planet_x).sqrt(), 0.0), 100.0, 150.0);
+    let attractor = Attractor::new(vec2(0.0,  planet_x), vec2(-(1000.0/planet_x).sqrt(), 0.0), 100.0, 150.0);
     system.add_attractor(attractor);
 
-    let num_dusts = 5_000_000;
+    let num_dusts = 500_000;
 
     for i in 0..num_dusts { // Reduce count for easier debugging
         let (xmid, ymid) = match (i as f32 / num_dusts as f32 * 4.0).floor() as u32 {
@@ -60,7 +60,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
     let device = window.device();
     let queue = window.queue();
 
-    model.system.update(1.0, device, queue);
+    model.system.update(1.0, 10, device, queue);
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {

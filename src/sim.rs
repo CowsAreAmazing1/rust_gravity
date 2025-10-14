@@ -293,39 +293,42 @@ impl System {
     }
     
     // Main update
-    pub fn update(&mut self, dt: f32, device: &Device, queue: &Queue) {
+    pub fn update(&mut self, dt: f32, sub_steps: u32, device: &Device, queue: &Queue) {
         if self.use_rk4 {
-            self.update_rk4(dt, device, queue);
+            self.update_rk4(dt, sub_steps, device, queue);
         } else {
             self.update_euler(dt);
         }
     }
     
-    fn update_rk4(&mut self, dt: f32, device: &Device, queue: &Queue) {
-        // Initial system state as States
-        let mut attractor_states: Vec<State> = self.attractors.iter()
-            .map(|body| body.get_state())
-            .collect();
-        
+    fn update_rk4(&mut self, dt: f32, sub_steps: u32, device: &Device, queue: &Queue) {
         // Substeps
-        let sub_dt = dt / 5.0;
-        for _ in 0..5 {
+        let sub_dt = dt / sub_steps as f32;
+        for _ in 0..sub_steps {
+            // Get current attractor states
+            let mut attractor_states: Vec<State> = self.attractors.iter()
+                .map(|body| body.get_state())
+                .collect();
+        
+            // Update attractor states
             attractor_states = attractor_states.iter().enumerate()
                 .map(|(i, &state)| {
                     RK4Integrator::integrate(&self.attractors, i, state, sub_dt)
                 })
                 .collect();
 
+            // Apply new attractor states
+            for (body, new_state) in self.attractors.iter_mut().zip(attractor_states.iter()) {
+                body.set_state(*new_state);
+            }
+
+            // Run compute shader for dust
             let attractors = self.get_bodies_gpu();
             if let Some(gpu_state) = &mut self.gpu_state {
                 gpu_state.update(sub_dt, device, queue, &attractors);
             }
         }
 
-        // Apply new states
-        for (body, new_state) in self.attractors.iter_mut().zip(attractor_states.iter()) {
-            body.set_state(*new_state);
-        }
     }
     
     /// Update using simple Euler integration (for comparison)
