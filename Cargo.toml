@@ -4,14 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+bytemuck = "1.24.0"
+differential-equations = "0.5.0"
+nalgebra = "0.34.1"
 nannou = "0.19.0"
 nannou_egui = "0.19.0"
 
 # Binary configurations (optional - Rust will auto-detect bin files)
-[[bin]]
-name = "sim"
-path = "src/bin/sim.rs"
-
 [[bin]]
 name = "planet_moon"
 path = "src/bin/planet_moon.rs"
@@ -19,7 +18,3 @@ path = "src/bin/planet_moon.rs"
 [[bin]]
 name = "multi_body"
 path = "src/bin/multi_body.rs"
-
-[[bin]]
-name = "rk4_demo"
-path = "src/bin/rk4_demo.rs"

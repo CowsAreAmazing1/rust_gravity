@@ -1,4 +1,6 @@
-use nannou::prelude::*;
+use nannou::{prelude::*, wgpu::{Device, Queue}};
+
+use crate::{gpu, GpuAttractor, GpuDust, GpuState};
 
 #[derive(Clone, Copy, Debug)]
 pub struct State {
@@ -255,26 +257,26 @@ impl RK4Integrator {
 
 
 
-
-
 /// Physics system that manages bodies and integration
 pub struct System {
-    pub bodies: Vec<Box<dyn Body>>,
+    pub attractors: Vec<Box<dyn Body>>,
     pub dust: Vec<Dust>,
+    pub gpu_state: Option<GpuState>,
     pub use_rk4: bool, // True: RK4, False: Euler
 }
 
 impl System {
     pub fn new() -> Self {
         System {
-            bodies: Vec::new(),
+            attractors: Vec::new(),
             dust: Vec::new(),
+            gpu_state: None,
             use_rk4: true, // RK4 by default
         }
     }
     
     pub fn add_attractor<T: Body + 'static>(&mut self, body: T) {
-        self.bodies.push(Box::new(body));
+        self.attractors.push(Box::new(body));
     }
 
     pub fn add_dust(&mut self, dust: Dust) {
@@ -284,50 +286,44 @@ impl System {
     pub fn set_integration_method(&mut self, use_rk4: bool) {
         self.use_rk4 = use_rk4;
     }
+
+    pub fn init_gpu(&mut self, device: &Device) {
+        let gpu_state = GpuState::new(device, &self.get_bodies_gpu(), &self.get_dust_gpu());
+        self.gpu_state = Some(gpu_state);
+    }
     
     // Main update
-    pub fn update(&mut self, dt: f32) {
+    pub fn update(&mut self, dt: f32, device: &Device, queue: &Queue) {
         if self.use_rk4 {
-            self.update_rk4(dt);
+            self.update_rk4(dt, device, queue);
         } else {
             self.update_euler(dt);
         }
     }
     
-    fn update_rk4(&mut self, dt: f32) {
+    fn update_rk4(&mut self, dt: f32, device: &Device, queue: &Queue) {
         // Initial system state as States
-        let mut attractor_states: Vec<State> = self.bodies.iter()
-            .map(|body| body.get_state())
-            .collect();
-
-        let mut dust_states: Vec<State> = self.dust.iter()
+        let mut attractor_states: Vec<State> = self.attractors.iter()
             .map(|body| body.get_state())
             .collect();
         
-
-
         // Substeps
         let sub_dt = dt / 5.0;
         for _ in 0..5 {
             attractor_states = attractor_states.iter().enumerate()
                 .map(|(i, &state)| {
-                    RK4Integrator::integrate(&self.bodies, i, state, sub_dt)
+                    RK4Integrator::integrate(&self.attractors, i, state, sub_dt)
                 })
                 .collect();
-    
-            dust_states = dust_states.iter()
-                .map(|&state| {
-                    RK4Integrator::integrate_dust(&self.bodies, state, sub_dt)
-                })
-                .collect();
+
+            let attractors = self.get_bodies_gpu();
+            if let Some(gpu_state) = &mut self.gpu_state {
+                gpu_state.update(sub_dt, device, queue, &attractors);
+            }
         }
 
         // Apply new states
-        for (body, new_state) in self.bodies.iter_mut().zip(attractor_states.iter()) {
-            body.set_state(*new_state);
-        }
-
-        for (body, new_state) in self.dust.iter_mut().zip(dust_states.iter()) {
+        for (body, new_state) in self.attractors.iter_mut().zip(attractor_states.iter()) {
             body.set_state(*new_state);
         }
     }
@@ -335,19 +331,19 @@ impl System {
     /// Update using simple Euler integration (for comparison)
     fn update_euler(&mut self, dt: f32) {
         // Calculate forces
-        let mut accelerations = vec![Vec2::ZERO; self.bodies.len()];
+        let mut accelerations = vec![Vec2::ZERO; self.attractors.len()];
         
-        for i in 0..self.bodies.len() {
-            for j in 0..self.bodies.len() {
+        for i in 0..self.attractors.len() {
+            for j in 0..self.attractors.len() {
                 if i != j {
-                    let force = self.bodies[i].grav_acc(self.bodies[j].as_ref());
-                    accelerations[i] += force / self.bodies[i].mass();
+                    let force = self.attractors[i].grav_acc(self.attractors[j].as_ref());
+                    accelerations[i] += force / self.attractors[i].mass();
                 }
             }
         }
         
         // Apply accelerations and update positions
-        for (body, acceleration) in self.bodies.iter_mut().zip(accelerations.iter()) {
+        for (body, acceleration) in self.attractors.iter_mut().zip(accelerations.iter()) {
             let velocity = body.velocity();
             *body.velocity_mut() += *acceleration * dt;
             *body.position_mut() += velocity * dt;
@@ -355,19 +351,57 @@ impl System {
     }
     
     pub fn get_bodies(&self) -> &[Box<dyn Body>] {
-        &self.bodies
+        &self.attractors
+    }
+    pub fn get_bodies_gpu(&self) -> Vec<GpuAttractor> {
+        self.attractors.iter().map(|b| {
+            GpuAttractor::new(b.position(), b.mass())
+        }).collect()
     }
     pub fn get_dusts(&self) -> &[Dust] {
         &self.dust
     }
+    pub fn get_dust_gpu(&self) -> Vec<GpuDust> {
+        self.dust.iter().map(|d| {
+            GpuDust::new(d.position(), d.velocity())
+        }).collect()
+    }
 
 
-    pub fn draw(&self, draw: &Draw) {
+    pub fn draw(&self, draw: &Draw, device: &Device, queue: &Queue, texture_view: &wgpu::TextureView) {
         for body in self.get_bodies() {
             body.draw(&draw);
         }
-        for dust in self.get_dusts() {
-            dust.draw(&draw);
+
+        if let Some(gpu_state) = &self.gpu_state {
+            let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
+
+            let render_pass_desc = wgpu::RenderPassDescriptor {
+                label: Some("Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &texture_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: true,
+                    },
+                })],
+                depth_stencil_attachment: None,
+            };
+
+            {
+                let mut render_pass = encoder.begin_render_pass(&render_pass_desc);
+                render_pass.set_pipeline(&gpu_state.render_pipeline);
+
+                render_pass.set_bind_group(0, &gpu_state.uniform_bind_group, &[]);
+                render_pass.set_vertex_buffer(0, gpu_state.vertex_buffer.slice(..));
+                render_pass.set_vertex_buffer(1, gpu_state.dust_buffer.slice(..));
+
+                render_pass.draw(0..gpu::QUAD_VERTICES.len() as u32, 0..gpu_state.num_particles);
+            }
+            queue.submit(Some(encoder.finish()));
         }
     }
 }
