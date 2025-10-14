@@ -125,11 +125,11 @@ pub struct Dust {
 }
 
 impl Dust {
-    pub fn new(position: Vec2, velocity: Vec2, hue: f32) -> Self {
+    pub fn new(position: Vec2, velocity: Vec2) -> Self {
         Dust {
             position,
             velocity,
-            color: Hsv::new(hue, 1.0, 1.0),
+            color: Hsv::new(random_range(0.0, 255.0), 1.0, 1.0),
         }
     }
 }
@@ -281,6 +281,10 @@ impl System {
 
     pub fn add_dust(&mut self, dust: Dust) {
         self.dust.push(dust);
+    }
+
+    pub fn dump_dust(&mut self, dust_vec: Vec<Dust>) {
+        self.dust = dust_vec;
     }
     
     pub fn set_integration_method(&mut self, use_rk4: bool) {

@@ -45,7 +45,7 @@ fn model(app: &App) -> Model {
             random_range(ymid - 100.0, ymid + 100.0),
         );
         let velocity = position.normalize().perp() * 0.5;
-        let new_dust = Dust::new(position, velocity, random_range(0.0, 200.0));
+        let new_dust = Dust::new(position, velocity);
         system.add_dust(new_dust);
     }
     system.init_gpu(device);

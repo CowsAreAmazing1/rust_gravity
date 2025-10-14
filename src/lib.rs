@@ -3,15 +3,9 @@
 
 pub mod sim;
 pub mod gpu;
+pub mod scene_layout;
 
 // Re-export commonly used items for convenience
 pub use sim::*;
 pub use gpu::*;
-
-
-
-
-
-
-
-
+pub use scene_layout::*;

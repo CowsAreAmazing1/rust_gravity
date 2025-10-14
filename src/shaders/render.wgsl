@@ -38,13 +38,10 @@ fn vs_main(input: VertexInput) -> VertexOutput {
 
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
-
     let speed = length(input.color.xy);
-    let hue = 0.8 - 0.8 * exp(-speed * 0.5);
-    let saturation = 1.0;
-    let value = 1.0;
+    let hue = 0.1 * log(speed);
 
-    let hsv = vec3<f32>(hue, saturation, value);
+    let hsv = vec3<f32>(hue, 1.0, 1.0);
     let rgb = hsv_to_rgb(hsv);
 
     return vec4<f32>(rgb, 1.0);
