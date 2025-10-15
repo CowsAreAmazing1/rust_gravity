@@ -1,5 +1,5 @@
 
-use main_gravity::{Attractor, Dust, System, Uniforms};
+use main_gravity::{Attractor, Quad, Setup, System, Uniforms};
 use nannou::prelude::*;
 
 
@@ -24,33 +24,16 @@ fn model(app: &App) -> Model {
     system.add_attractor(attractor);
     let attractor = Attractor::new(vec2( planet_x, 0.0), vec2(0.0,  (1000.0/planet_x).sqrt()), 100.0, 150.0);
     system.add_attractor(attractor);
-    let attractor = Attractor::new(vec2(0.0, -planet_x), vec2( (1000.0/planet_x).sqrt(), 0.0), 100.0, 150.0);
-    system.add_attractor(attractor);
-    let attractor = Attractor::new(vec2(0.0,  planet_x), vec2(-(1000.0/planet_x).sqrt(), 0.0), 100.0, 150.0);
-    system.add_attractor(attractor);
 
-    let num_dusts = 500_000;
+    let mut setup = Setup::new();
+    setup
+        .add(Quad::new().square(200.0).center_position(vec2( 500.0,  500.0)).orbit(Vec2::ZERO, 800.0, false))
+        .add(Quad::new().square(200.0).center_position(vec2(-500.0,  500.0)).orbit(Vec2::ZERO, 800.0, false))
+        .add(Quad::new().square(200.0).center_position(vec2( 500.0, -500.0)).orbit(Vec2::ZERO, 800.0, false))
+        .add(Quad::new().square(200.0).center_position(vec2(-500.0, -500.0)).orbit(Vec2::ZERO, 800.0, false));
+    system.include_setup(&setup, 1_000_000);
 
-    for i in 0..num_dusts { // Reduce count for easier debugging
-        let (xmid, ymid) = match (i as f32 / num_dusts as f32 * 4.0).floor() as u32 {
-            0 => ( 500.0,  500.0),
-            1 => (-500.0,  500.0),
-            2 => ( 500.0, -500.0),
-            3 => (-500.0, -500.0),
-            _ => panic!("Ahh")
-        };
-
-        let position = vec2(
-            random_range(xmid - 100.0, xmid + 100.0),
-            random_range(ymid - 100.0, ymid + 100.0),
-        );
-        let velocity = position.normalize().perp() * 0.5;
-        let new_dust = Dust::new(position, velocity);
-        system.add_dust(new_dust);
-    }
     system.init_gpu(device);
-
-    println!("System initialized with {} dust particles.", num_dusts);
 
     Model { system }
 }

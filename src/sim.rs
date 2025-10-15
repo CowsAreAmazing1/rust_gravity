@@ -283,8 +283,9 @@ impl System {
         self.dust.push(dust);
     }
 
-    pub fn dump_dust(&mut self, dust_vec: Vec<Dust>) {
-        self.dust = dust_vec;
+    pub fn include_setup(&mut self, setup: &crate::Setup, num_dust: u32) {
+        self.dust = Vec::with_capacity(std::mem::size_of::<Dust>() * num_dust as usize);
+        setup.build(num_dust, &mut self.dust);
     }
     
     pub fn set_integration_method(&mut self, use_rk4: bool) {

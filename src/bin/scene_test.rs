@@ -1,5 +1,5 @@
 
-use main_gravity::{Attractor, Disc, Quad, Setup, System, Uniforms};
+use main_gravity::{Attractor, Disc, Setup, System, Uniforms};
 use nannou::prelude::*;
 
 
@@ -16,27 +16,19 @@ fn model(app: &App) -> Model {
 
 
     // Launched attractor
-    let attractor = Attractor::new(vec2(-300.0, 0.0), vec2(50.0, 0.0), 150.0, 150.0);
+    let attractor = Attractor::new(vec2(-250.0, 0.0), vec2(30.0, 0.1), 300.0, 0.0);
     system.add_attractor(attractor);
-    
 
-    let num_dusts = 500_000;
-    let mut dusts = Vec::new();
-
-    Setup::new()
+    let mut setup = Setup::new();
+    setup
         .add(Disc::new().center_position(vec2( 200.0, 0.0)))
         .add(Disc::new().center_position(vec2( 100.0, 0.0)))
         .add(Disc::new().center_position(vec2(   0.0, 0.0)))
         .add(Disc::new().center_position(vec2(-100.0, 0.0)))
-        .add(Disc::new().center_position(vec2(-200.0, 0.0)))
-        // .add(Quad::new().width(200.0).height(5.0))
-        .build(num_dusts, &mut dusts);
-    system.dump_dust(dusts);
-    
+        .add(Disc::new().center_position(vec2(-200.0, 0.0)));
+    system.include_setup(&setup, 500_000);    
 
     system.init_gpu(device);
-
-    println!("System initialized with {} dust particles.", num_dusts);
 
     Model { system }
 }

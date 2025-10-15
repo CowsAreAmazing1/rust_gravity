@@ -39,7 +39,7 @@ impl Setup {
 
 
 
-
+#[derive(Debug)]
 enum CreationOperation {
     CenterOffset(Vec2),
     VelocityOffset(Vec2),
@@ -221,6 +221,7 @@ impl FillWithDust for Quad {
             let mut pos = vec2(point.x as f32, point.y as f32);
             let mut vel = Vec2::ZERO;
 
+
             for op in ops {
                 match op {
                     CreationOperation::CenterOffset(v) => { pos += *v; },
@@ -228,11 +229,11 @@ impl FillWithDust for Quad {
                     CreationOperation::VelocityScale(s) => { vel *= *s; },
                     CreationOperation::Orbit(center, mass, clockwise) => {
                         let rel_pos = *center - pos;
+                        let tangent = rel_pos.perp().normalize();
                         let dist = rel_pos.length();
-                        let angle = rel_pos.angle();
                         let speed = (mass / dist).sqrt();
-                        let sign = if *clockwise { -1.0 } else { 1.0 };
-                        vel += sign * speed * vec2(angle.sin() as f32, -angle.cos() as f32)
+                        let sign = if *clockwise { 1.0 } else { -1.0 };
+                        vel += sign * speed * tangent;
                     }
                 }
             }
