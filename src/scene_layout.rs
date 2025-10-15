@@ -1,4 +1,4 @@
-use nannou::prelude::*;
+use nannou::{geom::Range, prelude::*};
 
 use crate::Dust;
 
@@ -50,7 +50,7 @@ enum CreationOperation {
 
 
 
-
+// =========== DISC ===========
 pub struct Disc {
     inner_radius: f32,
     outer_radius: f32,
@@ -151,6 +151,95 @@ impl FillWithDust for Disc {
 
 
 
+// ========== QUAD ===========
+pub struct Quad {
+    rect: Rect,
+    ops: Vec<CreationOperation>,
+}
+
+impl Quad {
+    pub fn new() -> Self {
+        Quad {
+            rect: Rect::from_wh(Vec2::ONE),
+            ops: vec![],
+        }
+    }
+
+    pub fn square(mut self, size: f32) -> Self {
+        self.rect = Rect::from_w_h(size, size);
+        self
+    }
+    pub fn width(mut self, width: f32) -> Self {
+        self.rect.x = Range::new(-0.5*width, 0.5*width);
+        self
+    }
+    pub fn height(mut self, height: f32) -> Self {
+        self.rect.y = Range::new(-0.5*height, 0.5*height);
+        self
+    }
+    pub fn center_position(mut self, center: Vec2) -> Self {
+        self.ops.push(CreationOperation::CenterOffset(center));
+        self
+    }
+    pub fn center_velocity(mut self, velocity: Vec2) -> Self {
+        self.ops.push(CreationOperation::VelocityOffset(velocity));
+        self
+    }
+    pub fn speed_scale(mut self, scale: f32) -> Self {
+        self.ops.push(CreationOperation::VelocityScale(scale));
+        self
+    }
+    pub fn orbit(mut self, center: Vec2, mass: f32, clockwise: bool) -> Self {
+        self.ops.push(CreationOperation::Orbit(center, mass, clockwise));
+        self
+    }
+}
+
+impl FillWithDust for Quad {
+    fn build(&self, num: u32, target: &mut Vec<Dust>) {
+        let Self { rect, ops } = self;
+        let (w, h) = rect.w_h();
+
+        // Initial random distribution
+        let dx = 1.0 / num as f64;
+        let inv_phi = 2.0 / (1.0 + 5_f64.sqrt());
+        let points = (0..num).map(|n| {
+            // voronator::delaunator::Point {
+            //     x: random_range(-0.5*w, 0.5*w) as f64,
+            //     y: random_range(-0.5*h, 0.5*h) as f64,
+            // }
+            voronator::delaunator::Point {
+                x: w as f64 * (n as f64 * dx - 0.5),
+                y: h as f64 * ((n as f64 * inv_phi).fract() - 0.5),
+            }
+        }).collect::<Vec<voronator::delaunator::Point>>();
+
+        // Single pass of Lloyd's algorithm to improve distribution
+        let points = voronator::CentroidDiagram::<voronator::delaunator::Point>::new(&points).unwrap().centers;
+
+        for point in points {
+            let mut pos = vec2(point.x as f32, point.y as f32);
+            let mut vel = Vec2::ZERO;
+
+            for op in ops {
+                match op {
+                    CreationOperation::CenterOffset(v) => { pos += *v; },
+                    CreationOperation::VelocityOffset(v) => { vel += *v; },
+                    CreationOperation::VelocityScale(s) => { vel *= *s; },
+                    CreationOperation::Orbit(center, mass, clockwise) => {
+                        let rel_pos = *center - pos;
+                        let dist = rel_pos.length();
+                        let angle = rel_pos.angle();
+                        let speed = (mass / dist).sqrt();
+                        let sign = if *clockwise { -1.0 } else { 1.0 };
+                        vel += sign * speed * vec2(angle.sin() as f32, -angle.cos() as f32)
+                    }
+                }
+            }
+            target.push(Dust::new(pos, vel));
+        };
+    }
+}
 
 
 
@@ -223,59 +312,6 @@ impl FillWithDust for Disc {
 
 
 
-    // DiscBuilder
-    // pub fn center_vec(mut self, center: Vec2) -> Self{
-    //     self.center = center;
-    //     self
-    // }
-
-    // pub fn center_xy(mut self, x: f32, y: f32) -> Self{
-    //     self.center = vec2(x,y);
-    //     self
-    // }
-
-    // pub fn velocity_vec(mut self, velocity: Vec2) -> Self{
-    //     self.velocity += velocity;
-    //     self
-    // }
-
-    // pub fn velocity_xy(mut self, x: f32, y: f32) -> Self{
-    //     self.velocity += vec2(x,y);
-    //     self
-    // }
-
-    // pub fn orbit(mut self, orbit: bool) -> Self {
-    //     self.orbit = orbit;
-    //     self
-    // }
-
-    // pub fn velocity_scale(mut self, scale: f32) -> Self {
-    //     self.velocity_scale = scale;
-    //     self
-    // }
-
-    // pub fn build(self) -> Vec<Particle> {
-    //     let phi = (1.0 + 5_f64.sqrt()) / 2.0;
-    //     let phi_sqr = phi * phi;
-    //     let normalizer = 1.0 / (self.num_particles as f64).sqrt();
-    //     (0..self.num_particles).map(|i| {
-    //         let angle = f64::TAU() / phi_sqr * i as f64;
-    //         let r = self.radius as f64 * (i as f64).sqrt() * normalizer;
-    //         let pos = [(r * angle.cos() + self.center.x as f64) as f32, (r * angle.sin() + self.center.y as f64) as f32];
-    //         if self.orbit {
-    //             let speed = (SOLAR_MASS as f64 * G as f64 / r).sqrt() * self.velocity_scale as f64;
-    //             Particle {
-    //                 pos,
-    //                 vel: [(self.velocity.x as f64 - speed * angle.sin()) as f32, (self.velocity.y as f64 + speed * angle.cos()) as f32],
-    //             }
-    //         } else {
-    //             Particle {
-    //                 pos,
-    //                 vel: [self.velocity.x, self.velocity.y],
-    //             }
-    //         }
-    //     }).collect::<Vec<_>>()
-    // }
 
 
 
@@ -332,74 +368,7 @@ impl FillWithDust for Disc {
 
 
 
-    // QuadBuilder
-    // pub fn square(mut self, size: f32) -> Self {
-    //     self.width = size;
-    //     self.height = size;
-    //     self
-    // }
 
-    // pub fn width(mut self, width: f32) -> Self {
-    //     self.width = width;
-    //     self
-    // }
-
-    // pub fn height(mut self, height: f32) -> Self {
-    //     self.height = height;
-    //     self
-    // }
-
-    // pub fn center_vec(mut self, center: Vec2) -> Self {
-    //     self.center = center;
-    //     self
-    // }
-
-    // pub fn center_xy(mut self, x: f32, y: f32) -> Self {
-    //     self.center = vec2(x, y);
-    //     self
-    // }
-
-    // pub fn velocity_vec(mut self, velocity: Vec2) -> Self {
-    //     self.velocity += velocity;
-    //     self
-    // }
-
-    // pub fn velocity_xy(mut self, x: f32, y: f32) -> Self {
-    //     self.velocity += vec2(x, y);
-    //     self
-    // }
-
-    // pub fn orbit(mut self, orbit: bool) -> Self {
-    //     self.orbit = orbit;
-    //     self
-    // }
-
-    // pub fn build_random(self) -> Vec<Particle> {
-    //     (0..self.num_particles).map(|i| {
-    //         let x = random_range(self.center.x - self.width / 2.0, self.center.x + self.width / 2.0);
-    //         let y = random_range(self.center.y - self.height / 2.0, self.center.y + self.height / 2.0);
-    //         if self.orbit {
-    //             let dist = ((x - self.center.x).powi(2) + (y - self.center.y).powi(2)).sqrt();
-    //             let speed = (SOLAR_MASS * G / dist).sqrt();
-    //             if i == 0 {
-    //                 println!("dist: {}, speed: {}", dist, speed);
-    //             }
-
-    //             Particle {
-    //                 pos: [x, y],
-    //                 vel: [
-    //                     self.velocity.x - speed * y / dist,
-    //                     self.velocity.y + speed * x / dist,
-    //                 ]
-    //             }
-    //         } else {
-    //             Particle {
-    //                 pos: [x, y],
-    //                 vel: [self.velocity.x, self.velocity.y],
-    //             }
-    //         }
-    //     }).collect::<Vec<_>>()
-    // }
 
 
 

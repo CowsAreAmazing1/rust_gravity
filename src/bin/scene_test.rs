@@ -1,5 +1,5 @@
 
-use main_gravity::{Attractor, Disc, Setup, System, Uniforms};
+use main_gravity::{Attractor, Disc, Quad, Setup, System, Uniforms};
 use nannou::prelude::*;
 
 
@@ -16,7 +16,7 @@ fn model(app: &App) -> Model {
 
 
     // Launched attractor
-    let attractor = Attractor::new(vec2(-210.0, 0.0), vec2(10.0, 0.0), 100.0, 150.0);
+    let attractor = Attractor::new(vec2(-300.0, 0.0), vec2(50.0, 0.0), 150.0, 150.0);
     system.add_attractor(attractor);
     
 
@@ -24,8 +24,12 @@ fn model(app: &App) -> Model {
     let mut dusts = Vec::new();
 
     Setup::new()
-        .add(Disc::new().center_position(vec2(200.0, 0.0)))
+        .add(Disc::new().center_position(vec2( 200.0, 0.0)))
+        .add(Disc::new().center_position(vec2( 100.0, 0.0)))
+        .add(Disc::new().center_position(vec2(   0.0, 0.0)))
+        .add(Disc::new().center_position(vec2(-100.0, 0.0)))
         .add(Disc::new().center_position(vec2(-200.0, 0.0)))
+        // .add(Quad::new().width(200.0).height(5.0))
         .build(num_dusts, &mut dusts);
     system.dump_dust(dusts);
     
