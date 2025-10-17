@@ -7,6 +7,7 @@ use crate::Dust;
 // Main trait implemented by all scene builder elements. Allows filling with Dust particles.
 pub trait FillWithDust {
     fn build(&self, num: u32, target_vec: &mut Vec<Dust>);
+    fn build_random(&self, num: u32, target_vec: &mut Vec<Dust>);
 }
 
 
@@ -33,6 +34,13 @@ impl Setup {
         let num = total_num_particles / self.elements.len() as u32;
         for element in &self.elements {
             element.build(num, target);
+        }
+    }
+
+    pub fn build_random(&self, total_num_particles: u32, target: &mut Vec<Dust>) {
+        let num = total_num_particles / self.elements.len() as u32;
+        for element in &self.elements {
+            element.build_random(num, target);
         }
     }
 }
@@ -83,6 +91,11 @@ impl Disc {
         self
     }
     pub fn outer_radius(mut self, radius: f32) -> Self {
+        self.outer_radius = radius;
+        self
+    }
+    pub fn radius(mut self, radius: f32) -> Self {
+        self.inner_radius = 0.0;
         self.outer_radius = radius;
         self
     }
@@ -146,6 +159,43 @@ impl FillWithDust for Disc {
             }
             target.push(Dust::new(pos, vel));
         };
+    }
+
+    fn build_random(&self, num: u32, target_vec: &mut Vec<Dust>) {
+        let Self {
+            inner_radius: inner,
+            outer_radius: outer,
+            start_angle: start,
+            end_angle: end,
+            ops,
+        } = self;
+        
+        target_vec.append(
+            &mut (0..num).map(|_| {
+                let r = (inner.powi(2)) + (outer.powi(2) - inner.powi(2)) * random::<f32>();
+                let a = random_range(*start, *end);
+                let mut pos = r * vec2(a.cos(), a.sin());
+                let mut vel = Vec2::ZERO;
+
+                for op in ops {
+                    match op {
+                        CreationOperation::CenterOffset(v) => { pos += *v; },
+                        CreationOperation::VelocityOffset(v) => { vel += *v; },
+                        CreationOperation::VelocityScale(s) => { vel *= *s; },
+                        CreationOperation::Orbit(center, mass, clockwise) => {
+                            let rel_pos = *center - pos;
+                            let tangent = rel_pos.perp().normalize();
+                            let dist = rel_pos.length();
+                            let speed = (mass / dist).sqrt();
+                            let sign = if *clockwise { 1.0 } else { -1.0 };
+                            vel += sign * speed * tangent;
+                        }
+                    }
+                }
+
+                Dust::new(pos, vel)
+            }).collect::<Vec<Dust>>()
+        );
     }
 }
 
@@ -221,7 +271,6 @@ impl FillWithDust for Quad {
             let mut pos = vec2(point.x as f32, point.y as f32);
             let mut vel = Vec2::ZERO;
 
-
             for op in ops {
                 match op {
                     CreationOperation::CenterOffset(v) => { pos += *v; },
@@ -239,6 +288,39 @@ impl FillWithDust for Quad {
             }
             target.push(Dust::new(pos, vel));
         };
+    }
+
+    fn build_random(&self, num: u32, target_vec: &mut Vec<Dust>) {
+        let Self { rect, ops } = self;
+        let (w, h) = rect.w_h();
+        
+        target_vec.append(
+            &mut (0..num).map(|_| {
+                let mut pos = vec2(
+                    random_range(-0.5 * w, 0.5 * w),
+                    random_range(-0.5 * h, 0.5 * h),
+                );
+                let mut vel = Vec2::ZERO;
+
+                for op in ops {
+                    match op {
+                        CreationOperation::CenterOffset(v) => { pos += *v; },
+                        CreationOperation::VelocityOffset(v) => { vel += *v; },
+                        CreationOperation::VelocityScale(s) => { vel *= *s; },
+                        CreationOperation::Orbit(center, mass, clockwise) => {
+                            let rel_pos = *center - pos;
+                            let tangent = rel_pos.perp().normalize();
+                            let dist = rel_pos.length();
+                            let speed = (mass / dist).sqrt();
+                            let sign = if *clockwise { 1.0 } else { -1.0 };
+                            vel += sign * speed * tangent;
+                        }
+                    }
+                }
+
+                Dust::new(pos, vel)
+            }).collect::<Vec<Dust>>()
+        );
     }
 }
 

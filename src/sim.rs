@@ -106,6 +106,34 @@ impl Attractor {
             color: Hsv::new(hue, 1.0, 1.0),
         }
     }
+
+    pub fn set_orbit(&mut self, center: Vec2, center_mass: f32, clockwise: bool) {
+        let r = self.position - center;
+        let distance = r.length();
+        let speed = (center_mass / distance).sqrt();
+        let direction = if clockwise {
+            vec2( r.y, -r.x).normalize()
+        } else {
+            vec2(-r.y,  r.x).normalize()
+        };
+        self.velocity = direction * speed;
+    }
+
+    pub fn orbit_pair(&mut self, other: &mut Attractor, planet_clockwise: bool) {
+        let r = other.position - self.position;
+        let distance = r.length();
+        let mass_sum = self.mass + other.mass;
+
+        self.position = other.mass / mass_sum * -r;
+        other.position = self.mass / mass_sum * r;
+
+        let speed = (self.mass / distance).sqrt();
+        let direction = vec2(-r.y, r.x).normalize();
+        let sign = if planet_clockwise { 1.0 } else { -1.0 };
+        
+        self.velocity =  sign *  direction * (other.mass / self.mass) * speed;
+        other.velocity = sign * -direction * speed;
+    }
 }
 
 impl Body for Attractor {
@@ -278,7 +306,6 @@ impl System {
     pub fn add_attractor<T: Body + 'static>(&mut self, body: T) {
         self.attractors.push(Box::new(body));
     }
-
     pub fn add_dust(&mut self, dust: Dust) {
         self.dust.push(dust);
     }
@@ -286,6 +313,10 @@ impl System {
     pub fn include_setup(&mut self, setup: &crate::Setup, num_dust: u32) {
         self.dust = Vec::with_capacity(std::mem::size_of::<Dust>() * num_dust as usize);
         setup.build(num_dust, &mut self.dust);
+    }
+    pub fn include_setup_random(&mut self, setup: &crate::Setup, num_dust: u32) {
+        self.dust = Vec::with_capacity(std::mem::size_of::<Dust>() * num_dust as usize);
+        setup.build_random(num_dust, &mut self.dust);
     }
     
     pub fn set_integration_method(&mut self, use_rk4: bool) {
@@ -373,6 +404,25 @@ impl System {
         self.dust.iter().map(|d| {
             GpuDust::new(d.position(), d.velocity())
         }).collect()
+    }
+    pub fn get_body(&self, index: usize) -> Option<&Box<dyn Body>> {
+        self.attractors.get(index)
+    }
+
+    pub fn center_of_mass(&self) -> Vec2 {
+        let mut total_mass = 0.0;
+        let mut com = Vec2::ZERO;
+
+        for body in self.attractors.iter() {
+            com += body.position() * body.mass();
+            total_mass += body.mass();
+        }
+
+        if total_mass > 0.0 {
+            com / total_mass
+        } else {
+            Vec2::ZERO
+        }
     }
 
 

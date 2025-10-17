@@ -43,19 +43,35 @@ pub const QUAD_VERTICES: &[QuadVertex] = &[
 pub struct Uniforms {
     pub scale: f32,
     aspect_ratio: f32,
-    pub translation: [f32; 2],
+    pub camera_translation: [f32; 2], // Camera drag translation
     pub window_size: [f32; 2], // [width, height] in pixels
-    _padding2: [f32; 2],
+    pub rotation_angle: f32,    // Rotation angle in radians
+    _padding: f32,
+    pub rotation_center: [f32; 2], // Point to rotate around (in world coordinates)
 }
 
 impl Uniforms {
-    pub fn new(scale: f32, translation: Vec2, window_size: Vec2) -> Self {
+    pub fn new(scale: f32, camera_translation: Vec2, window_size: Vec2) -> Self {
         Self {
             scale,
             aspect_ratio: window_size.x / window_size.y,
-            translation: translation.into(),
+            camera_translation: camera_translation.into(),
             window_size: window_size.into(),
-            _padding2: [0.0; 2],
+            rotation_angle: 0.0,
+            _padding: 0.0,
+            rotation_center: [0.0, 0.0],
+        }
+    }
+
+    pub fn with_rotation(scale: f32, camera_translation: Vec2, window_size: Vec2, rotation_angle: f32, rotation_center: Vec2) -> Self {
+        Self {
+            scale,
+            aspect_ratio: window_size.x / window_size.y,
+            camera_translation: camera_translation.into(),
+            window_size: window_size.into(),
+            rotation_angle,
+            _padding: 0.0,
+            rotation_center: rotation_center.into(),
         }
     }
 }

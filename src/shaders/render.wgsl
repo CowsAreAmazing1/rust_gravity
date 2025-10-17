@@ -2,11 +2,13 @@
 struct Uniforms {
     scale: f32,
     aspect_ratio: f32,
-    translation: vec2<f32>,
+    camera_translation: vec2<f32>,
     window_size: vec2<f32>,
+    rotation_angle: f32,
     _padding: f32,
+    rotation_center: vec2<f32>,
 };
-@group(0) @binding(0) var<uniform> uniforms: Uniforms; // Scale is stored in uniforms.x and uniforms.y
+@group(0) @binding(0) var<uniform> uniforms: Uniforms;
 
 struct VertexInput {
     @location(0) quad_pos: vec2<f32>,
@@ -21,10 +23,20 @@ struct VertexOutput {
 
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
-    let particle_size = 1.0;
+    let particle_size = 0.5 / sqrt(uniforms.scale);
     let world_pos = input.particle_pos + input.quad_pos * particle_size;
     
-    let camera_pos = (world_pos - uniforms.translation) * uniforms.scale;
+    // Dragged position first
+    let translated_pos = world_pos - uniforms.camera_translation;
+    
+    // second, rotation around ( rotation_center - camera_translation )
+    let rotation_center_translated = uniforms.rotation_center - uniforms.camera_translation;
+    let pos_relative_to_center = translated_pos - rotation_center_translated;
+    let rotated_pos = rotate2d(pos_relative_to_center, uniforms.rotation_angle);
+    let final_pos = rotated_pos + rotation_center_translated;
+    
+    // Lastly scale
+    let camera_pos = final_pos * uniforms.scale;
 
     var ndc: vec2<f32>;
     ndc = camera_pos / uniforms.window_size * 2.0;
@@ -39,9 +51,9 @@ fn vs_main(input: VertexInput) -> VertexOutput {
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let speed = length(input.color.xy);
-    let hue = 0.1 * log(speed);
+    let hue = 0.3 * log(speed);
 
-    let hsv = vec3<f32>(hue, 1.0, 1.0);
+    let hsv = vec3<f32>(hue, 1.0, 1.0 - 0.0 * 0.5 * speed);
     let rgb = hsv_to_rgb(hsv);
 
     return vec4<f32>(rgb, 1.0);
