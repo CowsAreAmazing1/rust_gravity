@@ -1,5 +1,5 @@
 
-use main_gravity::{Attractor, Quad, Setup, System, Uniforms};
+use main_gravity::{prelude::*, Attractor, Quad, Setup, System, Uniforms};
 use nannou::prelude::*;
 
 
@@ -43,7 +43,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
     let device = window.device();
     let queue = window.queue();
 
-    model.system.update(1.0, 10, device, queue);
+    model.system.update(1.0, 10, Some(device), Some(queue));
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {

@@ -1,6 +1,6 @@
 use nannou::{geom::Range, prelude::*};
 
-use crate::Dust;
+use crate::{Body, Dust};
 
 
 
@@ -10,27 +10,55 @@ pub trait FillWithDust {
     fn build_random(&self, num: u32, target_vec: &mut Vec<Dust>);
 }
 
-
-pub struct Setup {
-    elements: Vec<Box<dyn FillWithDust>>,
+// ---------- SetupElement enum and Setup builder (static dispatch) ----------
+/// Closed set of setup elements — static, enumerable, and fast to match on.
+pub enum SetupElement {
+    Disc(Disc),
+    Quad(Quad),
 }
 
-impl Setup {
-    // Dust scene setup builder
-    pub fn new() -> Self {
-        Setup {
-            elements: vec![],
+impl From<Disc> for SetupElement {
+    fn from(d: Disc) -> Self { SetupElement::Disc(d) }
+}
+
+impl From<Quad> for SetupElement {
+    fn from(q: Quad) -> Self { SetupElement::Quad(q) }
+}
+
+impl FillWithDust for SetupElement {
+    fn build(&self, num: u32, target_vec: &mut Vec<Dust>) {
+        match self {
+            SetupElement::Disc(d) => d.build(num, target_vec),
+            SetupElement::Quad(q) => q.build(num, target_vec),
         }
     }
 
-    // Add an element to be filled with dust to the scene
-    pub fn add<T: FillWithDust + 'static>(&mut self, element: T) -> &mut Self {
-        self.elements.push(Box::new(element));
+    fn build_random(&self, num: u32, target_vec: &mut Vec<Dust>) {
+        match self {
+            SetupElement::Disc(d) => d.build_random(num, target_vec),
+            SetupElement::Quad(q) => q.build_random(num, target_vec),
+        }
+    }
+}
+
+/// Scene setup: holds a list of `SetupElement`s and can populate dust particles.
+pub struct Setup {
+    elements: Vec<SetupElement>,
+}
+
+impl Setup {
+    pub fn new() -> Self {
+        Setup { elements: Vec::new() }
+    }
+
+    /// Accept anything that converts into a `SetupElement` (Disc, Quad, ...)
+    pub fn add<E: Into<SetupElement>>(&mut self, element: E) -> &mut Self {
+        self.elements.push(element.into());
         self
     }
 
-    // Build the scene
     pub fn build(&self, total_num_particles: u32, target: &mut Vec<Dust>) {
+        if self.elements.is_empty() { return; }
         let num = total_num_particles / self.elements.len() as u32;
         for element in &self.elements {
             element.build(num, target);
@@ -38,6 +66,7 @@ impl Setup {
     }
 
     pub fn build_random(&self, total_num_particles: u32, target: &mut Vec<Dust>) {
+        if self.elements.is_empty() { return; }
         let num = total_num_particles / self.elements.len() as u32;
         for element in &self.elements {
             element.build_random(num, target);
@@ -46,9 +75,39 @@ impl Setup {
 }
 
 
+pub trait SetupObject {
+    /// Add an operation to this builder and return the updated builder.
+    fn add_operation(self, op: CreationOperation) -> Self where Self: Sized;
+
+    fn center_position(self, center: Vec2) -> Self where Self: Sized {
+        self.add_operation(CreationOperation::CenterOffset(center))
+    }
+    fn center_position_xy(self, x: f32, y: f32) -> Self where Self: Sized {
+        self.add_operation(CreationOperation::CenterOffset(vec2(x, y)))
+    }
+    fn center_velocity(self, velocity: Vec2) -> Self where Self: Sized {
+        self.add_operation(CreationOperation::VelocityOffset(velocity))
+    }
+    fn center_velocity_xy(self, x: f32, y: f32) -> Self where Self: Sized {
+        self.add_operation(CreationOperation::VelocityOffset(vec2(x, y)))
+    }
+    fn speed_scale(self, scale: f32) -> Self where Self: Sized {
+        self.add_operation(CreationOperation::VelocityScale(scale))
+    }
+
+    fn orbit(self, center: Vec2, mass: f32, clockwise: bool) -> Self where Self: Sized {
+        self.add_operation(CreationOperation::Orbit(center, mass, clockwise))
+    }
+    fn orbit_attractor<T: Body>(self, body: &T, clockwise: bool) -> Self where Self: Sized {
+        self.add_operation(CreationOperation::Orbit(body.position(), body.mass(), clockwise))
+    }
+}
+
+
+
 
 #[derive(Debug)]
-enum CreationOperation {
+pub enum CreationOperation {
     CenterOffset(Vec2),
     VelocityOffset(Vec2),
     // RadialVelocity(f32),
@@ -65,6 +124,13 @@ pub struct Disc {
     start_angle: f32,
     end_angle: f32,
     ops: Vec<CreationOperation>,
+}
+
+impl SetupObject for Disc {
+    fn add_operation(mut self, op: CreationOperation) -> Self {
+        self.ops.push(op);
+        self
+    }
 }
 
 impl Disc {
@@ -97,22 +163,6 @@ impl Disc {
     pub fn radius(mut self, radius: f32) -> Self {
         self.inner_radius = 0.0;
         self.outer_radius = radius;
-        self
-    }
-    pub fn center_position(mut self, center: Vec2) -> Self {
-        self.ops.push(CreationOperation::CenterOffset(center));
-        self
-    }
-    pub fn center_velocity(mut self, velocity: Vec2) -> Self {
-        self.ops.push(CreationOperation::VelocityOffset(velocity));
-        self
-    }
-    pub fn speed_scale(mut self, scale: f32) -> Self {
-        self.ops.push(CreationOperation::VelocityScale(scale));
-        self
-    }
-    pub fn orbit(mut self, center: Vec2, mass: f32, clockwise: bool) -> Self {
-        self.ops.push(CreationOperation::Orbit(center, mass, clockwise));
         self
     }
 }
@@ -169,12 +219,12 @@ impl FillWithDust for Disc {
             end_angle: end,
             ops,
         } = self;
-        
+
         target_vec.append(
             &mut (0..num).map(|_| {
                 let r = (inner.powi(2)) + (outer.powi(2) - inner.powi(2)) * random::<f32>();
                 let a = random_range(*start, *end);
-                let mut pos = r * vec2(a.cos(), a.sin());
+                let mut pos = r.sqrt() * vec2(a.cos(), a.sin());
                 let mut vel = Vec2::ZERO;
 
                 for op in ops {
@@ -207,6 +257,13 @@ pub struct Quad {
     ops: Vec<CreationOperation>,
 }
 
+impl SetupObject for Quad {
+    fn add_operation(mut self, op: CreationOperation) -> Self {
+        self.ops.push(op);
+        self
+    }
+}
+
 impl Quad {
     pub fn new() -> Self {
         Quad {
@@ -225,22 +282,6 @@ impl Quad {
     }
     pub fn height(mut self, height: f32) -> Self {
         self.rect.y = Range::new(-0.5*height, 0.5*height);
-        self
-    }
-    pub fn center_position(mut self, center: Vec2) -> Self {
-        self.ops.push(CreationOperation::CenterOffset(center));
-        self
-    }
-    pub fn center_velocity(mut self, velocity: Vec2) -> Self {
-        self.ops.push(CreationOperation::VelocityOffset(velocity));
-        self
-    }
-    pub fn speed_scale(mut self, scale: f32) -> Self {
-        self.ops.push(CreationOperation::VelocityScale(scale));
-        self
-    }
-    pub fn orbit(mut self, center: Vec2, mass: f32, clockwise: bool) -> Self {
-        self.ops.push(CreationOperation::Orbit(center, mass, clockwise));
         self
     }
 }

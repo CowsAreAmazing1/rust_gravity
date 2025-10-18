@@ -91,10 +91,10 @@ pub trait Body {
 
 
 pub struct Attractor {
-    pub position: Vec2,
-    pub velocity: Vec2,
-    pub mass: f32,
-    pub color: Hsv,
+    position: Vec2,
+    velocity: Vec2,
+    mass: f32,
+    color: Hsv,
 }
 
 impl Attractor {
@@ -284,7 +284,6 @@ impl RK4Integrator {
 
 
 
-
 /// Physics system that manages bodies and integration
 pub struct System {
     pub attractors: Vec<Box<dyn Body>>,
@@ -329,7 +328,7 @@ impl System {
     }
     
     // Main update
-    pub fn update(&mut self, dt: f32, sub_steps: u32, device: &Device, queue: &Queue) {
+    pub fn update(&mut self, dt: f32, sub_steps: u32, device: Option<&Device>, queue: Option<&Queue>) {
         if self.use_rk4 {
             self.update_rk4(dt, sub_steps, device, queue);
         } else {
@@ -337,12 +336,16 @@ impl System {
         }
     }
     
-    fn update_rk4(&mut self, dt: f32, sub_steps: u32, device: &Device, queue: &Queue) {
+    fn update_rk4(&mut self, dt: f32, sub_steps: u32, device: Option<&Device>, queue: Option<&Queue>) {
         // Substeps
         let sub_dt = dt / sub_steps as f32;
         for _ in 0..sub_steps {
             // Get current attractor states
             let mut attractor_states: Vec<State> = self.attractors.iter()
+                .map(|body| body.get_state())
+                .collect();
+            // Get current dust states
+            let mut dust_states: Vec<State> = self.dust.iter()
                 .map(|body| body.get_state())
                 .collect();
         
@@ -352,16 +355,28 @@ impl System {
                     RK4Integrator::integrate(&self.attractors, i, state, sub_dt)
                 })
                 .collect();
+            // Update dust states
+            dust_states = dust_states.iter()
+                .map(|&state| {
+                    RK4Integrator::integrate_dust(&self.attractors, state, sub_dt)
+                })
+                .collect();
 
             // Apply new attractor states
             for (body, new_state) in self.attractors.iter_mut().zip(attractor_states.iter()) {
                 body.set_state(*new_state);
             }
+            // Apply new dust states
+            for (body, new_state) in self.dust.iter_mut().zip(dust_states.iter()) {
+                body.set_state(*new_state);
+            }
 
             // Run compute shader for dust
-            let attractors = self.get_bodies_gpu();
-            if let Some(gpu_state) = &mut self.gpu_state {
-                gpu_state.update(sub_dt, device, queue, &attractors);
+            if let (Some(device), Some(queue)) = (device, queue) {
+                let attractors = self.get_bodies_gpu();
+                if let Some(gpu_state) = &mut self.gpu_state {
+                    gpu_state.update(sub_dt, device, queue, &attractors);
+                }
             }
         }
 
@@ -405,8 +420,12 @@ impl System {
             GpuDust::new(d.position(), d.velocity())
         }).collect()
     }
+
     pub fn get_body(&self, index: usize) -> Option<&Box<dyn Body>> {
         self.attractors.get(index)
+    }
+    pub fn get_dust(&self, index: usize) -> Option<&Dust> {
+        self.dust.get(index)
     }
 
     pub fn center_of_mass(&self) -> Vec2 {

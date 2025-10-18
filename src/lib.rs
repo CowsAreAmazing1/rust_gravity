@@ -9,3 +9,8 @@ pub mod scene_layout;
 pub use sim::*;
 pub use gpu::*;
 pub use scene_layout::*;
+
+/// A small prelude of commonly used traits/types for convenience in binaries.
+pub mod prelude {
+	pub use crate::scene_layout::{SetupObject, FillWithDust};
+}

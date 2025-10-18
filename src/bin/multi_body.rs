@@ -39,7 +39,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
     let queue = window.queue();
     let device = window.device();
 
-    model.system.update(0.2, 5, device, queue);
+    model.system.update(0.2, 5, Some(device), Some(queue));
 }
 fn view(app: &App, model: &Model, frame: Frame) {
     let window = app.main_window();

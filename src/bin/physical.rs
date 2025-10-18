@@ -1,6 +1,6 @@
 
 use nannou::prelude::*;
-use main_gravity::{Attractor, Quad, Setup, System, Uniforms};
+use main_gravity::{prelude::*, Setup, Quad, Body, Attractor, System, Uniforms};
 
 
 
@@ -27,7 +27,7 @@ impl Model {
 }
 
 fn model(app: &App) -> Model {
-    app.new_window().view(view).size(1500, 1500).build().unwrap();
+    app.new_window().view(view).size(1000, 800).build().unwrap();
     let window = app.main_window();
     let device = window.device();
     window.set_outer_position_pixels(50, 50);
@@ -38,18 +38,15 @@ fn model(app: &App) -> Model {
     let mut sun = Attractor::new(Vec2::ZERO, Vec2::ZERO, 100.0, 0.0);
     let mut planet = Attractor::new(vec2(200.0, 0.0), Vec2::ZERO, 5.0, 100.0);    
 
-
-    println!("planet vel: {:?}, sun vel: {:?}", planet.velocity, sun.velocity);
     sun.orbit_pair(&mut planet, false);
-    println!("planet vel: {:?}, sun vel: {:?}", planet.velocity, sun.velocity);
-
     
-    let soi = planet.position.x * (planet.mass / sun.mass).powf(2.0/5.0);
-    let spawn_angle = PI / 2.0 + 0.01;
-    let spawn_vec = vec2(spawn_angle.cos(), spawn_angle.sin());
+    // let soi = planet.position().x * (planet.mass() / sun.mass()).powf(2.0/5.0);
+    // let spawn_angle = PI / 2.0 + 0.01;
+    // let spawn_vec = vec2(spawn_angle.cos(), spawn_angle.sin());
 
     let mut setup = Setup::new();
-    setup.add(Quad::new().center_position(planet.position + 0.4 * soi * spawn_vec).square(10.0).orbit(sun.position, sun.mass, false).orbit(planet.position, planet.mass, false));
+    // setup.add(Quad::new().center_position(planet.position() + 0.4 * soi * spawn_vec).square(10.0).orbit(sun.position(), sun.mass(), false).orbit(planet.position(), planet.mass(), false));
+    setup.add(Quad::new().center_position(0.3 * sun.position() + 0.7 * planet.position()).square(1.0).center_velocity_xy(0.0, 0.94));
     system.include_setup_random(&setup, 5_000_000);
     
     system.add_attractor(sun);
@@ -64,7 +61,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
     let device = window.device();
     let queue = window.queue();
 
-    model.system.update(1.0, 5, device, queue);
+    model.system.update(0.5, 5, Some(device), Some(queue));
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
