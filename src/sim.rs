@@ -124,15 +124,15 @@ impl Attractor {
         let distance = r.length();
         let mass_sum = self.mass + other.mass;
 
-        self.position = other.mass / mass_sum * -r;
-        other.position = self.mass / mass_sum * r;
+        self.position = -r * (other.mass / mass_sum);
+        other.position = r * (self.mass / mass_sum);
 
-        let speed = (self.mass / distance).sqrt();
+        let denom = (mass_sum * distance).sqrt().max(1e-6);
         let direction = vec2(-r.y, r.x).normalize();
         let sign = if planet_clockwise { 1.0 } else { -1.0 };
-        
-        self.velocity =  sign *  direction * (other.mass / self.mass) * speed;
-        other.velocity = sign * -direction * speed;
+
+        self.velocity = sign * direction * (other.mass / denom);
+        other.velocity = sign * -direction * (self.mass / denom);
     }
 }
 
