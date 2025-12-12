@@ -2,7 +2,7 @@ use std::f32::consts::PI;
 
 use main_gravity::prelude::*;
 use nannou::math::{Vec2Angle, Vec2Rotate};
-use quill::prelude::*;
+use plotters::prelude::*;
 
 fn system_setup(pos_mul: f32, vel_mul: f32) -> System{
     let mut system = sun_planet_binary_ccw(100.0, 5.0);
@@ -37,7 +37,7 @@ fn simulate_dust(pos_mul: f32, vel_mul: f32) -> Vec<(f32, f32)> {
     return dust_path.iter().map(|p| (p.x, p.y)).collect();
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     const PATH_COUNT: usize = 100;
 
     let planet_orbit_radius = sun_planet_binary_ccw(100.0, 5.0)
@@ -60,24 +60,24 @@ fn main() {
         })
         .collect();
 
-    let data: [Series; PATH_COUNT + 1] = std::array::from_fn(|i| {
-        if i < PATH_COUNT {
-            Series::builder()
-                .data(paths[i].clone())
-                .color(Color::Red)
-                .build()
-        } else {
-            Series::builder()
-                .data(circle_points.clone())
-                .color(Color::Black)
-                .build()
-        }
-    });
 
-    let line_plot = Plot::builder()
-        .dimensions((6_000, 6_000))
-        .data(data)
-        .build();
+    let root = BitMapBackend::new("./pics/output0.png", (6000, 6000)).into_drawing_area();
+    root.fill(&WHITE)?;
 
-    line_plot.to_png(&format!("./pics/output0.png"), 1.0).unwrap();
+    let limit = 1.5*planet_orbit_radius;
+    let mut chart = ChartBuilder::on(&root)
+        .margin(0)
+        .build_cartesian_2d(-limit..limit, -limit..limit)?;
+
+    chart.configure_mesh().draw()?;
+
+    for path in paths.into_iter() {
+        chart.draw_series(LineSeries::new(path, BLUE))?;
+    }
+    chart.draw_series(LineSeries::new(circle_points, &BLACK))?;
+
+
+    root.present()?;
+
+    Ok(())
 }
