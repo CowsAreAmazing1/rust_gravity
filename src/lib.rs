@@ -12,5 +12,9 @@ pub use scene_layout::*;
 
 /// A small prelude of commonly used traits/types for convenience in binaries.
 pub mod prelude {
+	pub use crate::sim::{
+		Body, Attractor, Dust, System,
+		sun_planet_binary_cw, sun_planet_binary_ccw
+	};
 	pub use crate::scene_layout::{SetupObject, FillWithDust};
 }

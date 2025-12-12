@@ -1,58 +1,83 @@
-use core::f32;
+use std::f32::consts::PI;
 
-use main_gravity::{Body, Attractor, Dust, System};
-use nannou::{glam::{vec2, Vec2}, math::{Vec2Angle, Vec2Rotate}};
+use main_gravity::prelude::*;
+use nannou::math::{Vec2Angle, Vec2Rotate};
+use quill::prelude::*;
 
+fn system_setup(pos_mul: f32, vel_mul: f32) -> System{
+    let mut system = sun_planet_binary_ccw(100.0, 5.0);
+    let planet = system.get_body(1).unwrap();
+    
+    let dust = Dust::new(pos_mul * planet.position(), vel_mul * planet.velocity());
+    system.add_dust(dust);
 
-
-fn sun_planet_sys() -> System {
-    let mut system = System::new();
-
-    let mut sun = Attractor::new(Vec2::ZERO, Vec2::ZERO, 100.0, 0.0);
-    let mut planet = Attractor::new(vec2(200.0, 0.0), Vec2::ZERO, 5.0, 100.0);
-    sun.orbit_pair(&mut planet, false);
-
-    system.add_attractor(sun);
-    system.add_attractor(planet);
-
-    system
+    return system;
 }
 
+fn simulate_dust(pos_mul: f32, vel_mul: f32) -> Vec<(f32, f32)> {
+    let mut system = system_setup(pos_mul, vel_mul);
+
+    let mut dust_path = Vec::new();
+
+    system.update_until(|sys| {
+        let planet = sys.get_body(1).unwrap();
+        let com = sys.center_of_mass();
+        let sun_space = planet.position() - com;
+        let angle = sun_space.angle();
+
+        let dust_pos = sys.get_dust(0).unwrap().position();
+        let dust_pos_rot =   (dust_pos - com).rotate(-angle);
+
+        dust_path.push(dust_pos_rot);
+
+        return dust_pos_rot.x < 0.0;
+        // return false
+    }, 0.1, 5, 100_000, None, None);
+
+    return dust_path.iter().map(|p| (p.x, p.y)).collect();
+}
 
 fn main() {
-    let mut data = Vec::new();
-    for x in 0..50 {
-        for i in 0..50 {
-            let mut system = sun_planet_sys();
-        
-            let planet = system.get_body(1).unwrap();
-            
-            let interp = x as f32 / 50.0;
-            let dust_pos = interp * planet.position();
-            let dust_vel = i as f32 / 50.0;
-            let dust = Dust::new(dust_pos, vec2(0.0, dust_vel));
-            system.add_dust(dust);
-        
-            let mut ypos = f32::INFINITY;
-            let rpos = {
-                let mut rpos = Vec2::ZERO;
-                
-                while ypos > 0.0 {
-                    system.update(0.1, 10, None, None);
-                    
-                    let angle = (system.get_body(1).unwrap().position() - system.center_of_mass()).angle();
-                    rpos = (system.get_dust(0).unwrap().position() - system.center_of_mass()).rotate(-angle);
-                    ypos = rpos.y;
-                }
-                rpos
-            };
-            data.push([rpos.x, dust_vel]);
+    const PATH_COUNT: usize = 100;
 
-        }
-    }
+    let planet_orbit_radius = sun_planet_binary_ccw(100.0, 5.0)
+        .get_body(1)
+        .unwrap()
+        .position()
+        .length();
 
-    data.iter().for_each(|d| {
-        print!("({}, {})", d[0],d[1]);
-        print!(",")
+    let paths: [Vec<(f32, f32)>; PATH_COUNT] = std::array::from_fn(|n| {
+        simulate_dust(0.7, 1.29 + 0.00002 * n as f32)
     });
+
+    let circle_points: Vec<(f32, f32)> = (0..100)
+        .map(|n| {
+            let angle = n as f32 * PI / 50.0;
+            (
+                planet_orbit_radius * angle.cos(),
+                planet_orbit_radius * angle.sin(),
+            )
+        })
+        .collect();
+
+    let data: [Series; PATH_COUNT + 1] = std::array::from_fn(|i| {
+        if i < PATH_COUNT {
+            Series::builder()
+                .data(paths[i].clone())
+                .color(Color::Red)
+                .build()
+        } else {
+            Series::builder()
+                .data(circle_points.clone())
+                .color(Color::Black)
+                .build()
+        }
+    });
+
+    let line_plot = Plot::builder()
+        .dimensions((6_000, 6_000))
+        .data(data)
+        .build();
+
+    line_plot.to_png(&format!("./pics/output0.png"), 1.0).unwrap();
 }

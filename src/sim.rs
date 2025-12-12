@@ -127,7 +127,7 @@ impl Attractor {
         self.position = -r * (other.mass / mass_sum);
         other.position = r * (self.mass / mass_sum);
 
-        let denom = (mass_sum * distance).sqrt().max(1e-6);
+        let denom = (mass_sum * distance).sqrt().max(1e-8);
         let direction = vec2(-r.y, r.x).normalize();
         let sign = if planet_clockwise { 1.0 } else { -1.0 };
 
@@ -137,9 +137,9 @@ impl Attractor {
 }
 
 impl Body for Attractor {
-    fn position(&self) -> Vec2 { self.position }
+    fn position(&self) -> Vec2                   { self.position }
     fn position_mut(&mut self) -> &mut Vec2 { &mut self.position }
-    fn velocity(&self) -> Vec2 { self.velocity }
+    fn velocity(&self) -> Vec2                   { self.velocity }
     fn velocity_mut(&mut self) -> &mut Vec2 { &mut self.velocity }
     fn mass(&self) -> f32 { self.mass }
     fn color(&self) -> Hsv { self.color }
@@ -242,9 +242,9 @@ impl RK4Integrator {
     ) -> State {
         // RK4 coefficients
         let k1 = Self::evaluate(bodies, body_index, initial_state, State::ZERO, 0.0);
-        let k2 = Self::evaluate(bodies, body_index, initial_state, k1, dt * 0.5);
-        let k3 = Self::evaluate(bodies, body_index, initial_state, k2, dt * 0.5);
-        let k4 = Self::evaluate(bodies, body_index, initial_state, k3, dt);
+        let k2 = Self::evaluate(bodies, body_index, initial_state, k1,          dt * 0.5);
+        let k3 = Self::evaluate(bodies, body_index, initial_state, k2,          dt * 0.5);
+        let k4 = Self::evaluate(bodies, body_index, initial_state, k3,          dt);
         
         let final_state = k1
             .add(&k2.scale(2.0))
@@ -403,6 +403,17 @@ impl System {
             *body.position_mut() += velocity * dt;
         }
     }
+
+    pub fn update_until(&mut self, mut condition: impl FnMut(&System) -> bool, dt: f32, sub_steps: u32, max_steps: u32, device: Option<&Device>, queue: Option<&Queue>) {
+        let mut steps = 0;
+        while !condition(self) && steps < max_steps {
+            self.update(dt, sub_steps, device, queue);
+            steps += 1;
+        }
+    }
+
+
+
     
     pub fn get_bodies(&self) -> &[Box<dyn Body>] {
         &self.attractors
@@ -481,4 +492,26 @@ impl System {
             queue.submit(Some(encoder.finish()));
         }
     }
+}
+
+pub fn sun_planet_binary(sun_mass: f32, planet_mass: f32, planet_clockwise: bool) -> System {
+    let mut system = System::new();
+
+    let mut sun = Attractor::new(Vec2::ZERO, Vec2::ZERO, sun_mass, 0.0);
+    let mut planet = Attractor::new(vec2(200.0, 0.0), Vec2::ZERO, planet_mass, 100.0);
+    sun.orbit_pair(&mut planet, planet_clockwise);
+
+    system.add_attractor(sun);
+    system.add_attractor(planet);
+
+    system
+}
+
+pub fn sun_planet_binary_cw(sun_mass: f32, planet_mass: f32) -> System {
+    sun_planet_binary(sun_mass, planet_mass, true)
+}
+
+
+pub fn sun_planet_binary_ccw(sun_mass: f32, planet_mass: f32) -> System {
+    sun_planet_binary(sun_mass, planet_mass, false)
 }
