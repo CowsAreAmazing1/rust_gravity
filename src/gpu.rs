@@ -1,11 +1,7 @@
-
-
-use nannou::prelude::*;
 use bytemuck::{Pod, Zeroable};
-
+use nannou::prelude::*;
 
 const WORK_GROUP_SIZE: u32 = 256;
-
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable, Debug)]
@@ -23,20 +19,17 @@ impl QuadVertex {
                 offset: 0,
                 shader_location: 0, // Matches @location(1) in VertexInput
                 format: wgpu::VertexFormat::Float32x2,
-            }]
+            }],
         }
     }
 }
 
 pub const QUAD_VERTICES: &[QuadVertex] = &[
     QuadVertex { pos: [-0.5, -0.5] }, // Bottom-left
-    QuadVertex { pos: [ 0.5, -0.5] }, // Bottom-right
-    QuadVertex { pos: [-0.5,  0.5] }, // Top-left
-    QuadVertex { pos: [ 0.5,  0.5] }, // Top-right
+    QuadVertex { pos: [0.5, -0.5] },  // Bottom-right
+    QuadVertex { pos: [-0.5, 0.5] },  // Top-left
+    QuadVertex { pos: [0.5, 0.5] },   // Top-right
 ];
-
-
-
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable, Debug)]
@@ -44,8 +37,8 @@ pub struct Uniforms {
     pub scale: f32,
     aspect_ratio: f32,
     pub camera_translation: [f32; 2], // Camera drag translation
-    pub window_size: [f32; 2], // [width, height] in pixels
-    pub rotation_angle: f32,    // Rotation angle in radians
+    pub window_size: [f32; 2],        // [width, height] in pixels
+    pub rotation_angle: f32,          // Rotation angle in radians
     _padding: f32,
     pub rotation_center: [f32; 2], // Point to rotate around (in world coordinates)
 }
@@ -63,7 +56,13 @@ impl Uniforms {
         }
     }
 
-    pub fn with_rotation(scale: f32, camera_translation: Vec2, window_size: Vec2, rotation_angle: f32, rotation_center: Vec2) -> Self {
+    pub fn with_rotation(
+        scale: f32,
+        camera_translation: Vec2,
+        window_size: Vec2,
+        rotation_angle: f32,
+        rotation_center: Vec2,
+    ) -> Self {
         Self {
             scale,
             aspect_ratio: window_size.x / window_size.y,
@@ -76,15 +75,12 @@ impl Uniforms {
     }
 }
 
-
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable, Debug)]
 struct DispatchParams {
     offset: u32,
     dt: f32,
 }
-
-
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable, Debug)]
@@ -134,12 +130,11 @@ impl GpuDust {
                     offset: mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
                     shader_location: 2, // @location(2) particle_vel
                     format: wgpu::VertexFormat::Float32x2,
-                }
-            ]
+                },
+            ],
         }
     }
 }
-
 
 pub struct GpuState {
     compute_pipeline: wgpu::ComputePipeline,
@@ -154,11 +149,15 @@ pub struct GpuState {
     pub uniform_bind_group: wgpu::BindGroup,
     pub dispatch_bind_group: wgpu::BindGroup,
 
-    pub num_particles: u32
+    pub num_particles: u32,
 }
 
 impl GpuState {
-    pub fn new(device: &wgpu::Device, attractors: &[GpuAttractor], dust_particles: &[GpuDust]) -> Self {
+    pub fn new(
+        device: &wgpu::Device,
+        attractors: &[GpuAttractor],
+        dust_particles: &[GpuDust],
+    ) -> Self {
         let attractor_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Attractor Buffer"),
             contents: bytemuck::cast_slice(attractors),
@@ -192,9 +191,9 @@ impl GpuState {
         });
 
         // Bind groups
-        let attractor_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
+        let attractor_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::COMPUTE | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
@@ -203,25 +202,22 @@ impl GpuState {
                         min_binding_size: None,
                     },
                     count: None,
-                }
-            ],
-            label: Some("Attractor Bind Group Layout"),
-        });
+                }],
+                label: Some("Attractor Bind Group Layout"),
+            });
 
         let attractor_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &attractor_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: attractor_buffer.as_entire_binding(),
-                },
-            ],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: attractor_buffer.as_entire_binding(),
+            }],
             label: Some("Attractor Bind Group"),
         });
 
-        let dust_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
+        let dust_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::COMPUTE,
                     ty: wgpu::BindingType::Buffer {
@@ -230,25 +226,22 @@ impl GpuState {
                         min_binding_size: None,
                     },
                     count: None,
-                },
-            ],
-            label: Some("Dust Bind Group Layout"),
-        });
+                }],
+                label: Some("Dust Bind Group Layout"),
+            });
 
         let dust_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &dust_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: dust_buffer.as_entire_binding()
-                },
-            ],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: dust_buffer.as_entire_binding(),
+            }],
             label: Some("Dust Bind Group"),
         });
 
-        let uniform_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
+        let uniform_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
@@ -257,25 +250,22 @@ impl GpuState {
                         min_binding_size: None,
                     },
                     count: None,
-                }
-            ],
-            label: Some("Uniform Bind Group Layout"),
-        });
+                }],
+                label: Some("Uniform Bind Group Layout"),
+            });
 
         let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &uniform_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uniform_buffer.as_entire_binding(),
-                },
-            ],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.as_entire_binding(),
+            }],
             label: Some("Uniform Bind Group"),
         });
 
-        let dispatch_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
+        let dispatch_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::COMPUTE,
                     ty: wgpu::BindingType::Buffer {
@@ -284,19 +274,16 @@ impl GpuState {
                         min_binding_size: None,
                     },
                     count: None,
-                }
-            ],
-            label: Some("Dispatch Params Bind Group Layout"),
-        });
+                }],
+                label: Some("Dispatch Params Bind Group Layout"),
+            });
 
         let dispatch_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &dispatch_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: dispatch_buffer.as_entire_binding(),
-                },
-            ],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: dispatch_buffer.as_entire_binding(),
+            }],
             label: Some("Dispatch Bind Group"),
         });
 
@@ -312,17 +299,23 @@ impl GpuState {
         });
 
         // Create pipeline layouts
-        let compute_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Compute Pipeline Layout"),
-            bind_group_layouts: &[&dust_bind_group_layout, &attractor_bind_group_layout, &dispatch_bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let compute_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Compute Pipeline Layout"),
+                bind_group_layouts: &[
+                    &dust_bind_group_layout,
+                    &attractor_bind_group_layout,
+                    &dispatch_bind_group_layout,
+                ],
+                push_constant_ranges: &[],
+            });
 
-        let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[&uniform_bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let render_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Render Pipeline Layout"),
+                bind_group_layouts: &[&uniform_bind_group_layout],
+                push_constant_ranges: &[],
+            });
 
         // Create pipelines
         let compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -367,7 +360,7 @@ impl GpuState {
             multiview: None,
         });
 
-        GpuState { 
+        GpuState {
             compute_pipeline,
             render_pipeline,
             attractor_buffer,
@@ -380,7 +373,7 @@ impl GpuState {
             uniform_bind_group,
             dispatch_bind_group,
 
-            num_particles: dust_particles.len() as u32
+            num_particles: dust_particles.len() as u32,
         }
     }
 
@@ -388,11 +381,17 @@ impl GpuState {
         queue.write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(uniforms));
     }
 
-    pub fn update(&self, dt: f32, device: &wgpu::Device, queue: &wgpu::Queue, gpu_attractors: &[GpuAttractor]) {
+    pub fn update(
+        &self,
+        dt: f32,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        gpu_attractors: &[GpuAttractor],
+    ) {
         queue.write_buffer(
             &self.attractor_buffer,
             0,
-            bytemuck::cast_slice(&gpu_attractors),
+            bytemuck::cast_slice(gpu_attractors),
         );
 
         let max_invocations = WORK_GROUP_SIZE * 65535;
@@ -400,22 +399,21 @@ impl GpuState {
         while offset < self.num_particles {
             let remaining = self.num_particles - offset;
             let chunk_size = remaining.min(max_invocations);
-            let num_workgroups = (chunk_size + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE;
+            let num_workgroups = chunk_size.div_ceil(WORK_GROUP_SIZE);
 
-            let params = DispatchParams {
-                offset,
-                dt,
-            };
+            let params = DispatchParams { offset, dt };
             queue.write_buffer(&self.dispatch_buffer, 0, bytemuck::bytes_of(&params));
 
-            let mut compute_encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Compute Encoder"),
-            });
+            let mut compute_encoder =
+                device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Compute Encoder"),
+                });
 
             {
-                let mut compute_pass = compute_encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Compute Pass"),
-                });
+                let mut compute_pass =
+                    compute_encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                        label: Some("Compute Pass"),
+                    });
                 compute_pass.set_pipeline(&self.compute_pipeline);
                 compute_pass.set_bind_group(0, &self.dust_bind_group, &[]);
                 compute_pass.set_bind_group(1, &self.attractor_bind_group, &[]);
