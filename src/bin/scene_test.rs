@@ -1,19 +1,20 @@
-
 use main_gravity::{prelude::*, Attractor, Disc, Setup, System, Uniforms};
 use nannou::prelude::*;
-
 
 struct Model {
     system: System,
 }
 
 fn model(app: &App) -> Model {
-    app.new_window().size(1500, 1500).view(view).build().unwrap();
+    app.new_window()
+        .size(1500, 1500)
+        .view(view)
+        .build()
+        .unwrap();
     let window = app.main_window();
     let device = window.device();
 
     let mut system = System::new();
-
 
     // Launched attractor
     let attractor = Attractor::new(vec2(-250.0, 0.0), vec2(30.0, 0.1), 300.0, 0.0);
@@ -21,12 +22,12 @@ fn model(app: &App) -> Model {
 
     let mut setup = Setup::new();
     setup
-        .add(Disc::new().center_position(vec2( 200.0, 0.0)))
-        .add(Disc::new().center_position(vec2( 100.0, 0.0)))
-        .add(Disc::new().center_position(vec2(   0.0, 0.0)))
+        .add(Disc::new().center_position(vec2(200.0, 0.0)))
+        .add(Disc::new().center_position(vec2(100.0, 0.0)))
+        .add(Disc::new().center_position(vec2(0.0, 0.0)))
         .add(Disc::new().center_position(vec2(-100.0, 0.0)))
         .add(Disc::new().center_position(vec2(-200.0, 0.0)));
-    system.include_setup(&setup, 500_000);    
+    system.include_setup(&setup, 500_000);
 
     system.init_gpu(device);
 
@@ -52,15 +53,11 @@ fn view(app: &App, model: &Model, frame: Frame) {
     // Update uniforms before drawing
     if let Some(gpu_state) = &model.system.gpu_state {
         let window_rect = app.window_rect();
-        let uniforms = Uniforms::new(
-            1.0,
-            Vec2::ZERO,
-            window_rect.wh()
-        );
+        let uniforms = Uniforms::new(1.0, Vec2::ZERO, window_rect.wh());
         gpu_state.update_uniforms(queue, &uniforms);
     }
 
-    model.system.draw(&draw, device, queue, texture_view);
+    model.system.draw(&draw, device, queue, texture_view, 1.0);
 
     draw.to_frame(app, &frame).unwrap();
 }

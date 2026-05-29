@@ -1,5 +1,5 @@
-use nannou::prelude::*;
 use main_gravity::{Attractor, System};
+use nannou::prelude::*;
 
 fn main() {
     nannou::app(model).update(update).view(view).run();
@@ -16,8 +16,13 @@ fn model(app: &App) -> Model {
 
     let planet = Attractor::new(vec2(0.0, 0.0), vec2(0.0, 0.0), 500.0, 120.0);
     system.add_attractor(planet);
-    
-    let moon = Attractor::new(vec2(150.0, 0.0), vec2(0.0, (500.0 / 150.0).sqrt()), 10.0, 250.0);
+
+    let moon = Attractor::new(
+        vec2(150.0, 0.0),
+        vec2(0.0, (500.0 / 150.0).sqrt()),
+        10.0,
+        250.0,
+    );
     system.add_attractor(moon);
 
     Model { system }
@@ -40,7 +45,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
     draw.background().color(BLACK);
 
-    model.system.draw(&draw, device, queue, texture_view);
-    
+    model.system.draw(&draw, device, queue, texture_view, 1.0);
+
     draw.to_frame(app, &frame).unwrap();
 }

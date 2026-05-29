@@ -543,6 +543,7 @@ impl System {
         device: &Device,
         queue: &Queue,
         texture_view: &wgpu::TextureView,
+        _zoom: f32, // figure out how to sync gpu scale and draw zooming
     ) {
         for body in self.get_bodies() {
             body.draw(draw);

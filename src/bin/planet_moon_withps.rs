@@ -64,7 +64,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
         gpu_state.update_uniforms(queue, &uniforms);
     }
 
-    model.system.draw(&draw, device, queue, texture_view);
+    model.system.draw(&draw, device, queue, texture_view, 1.0);
 
     draw.to_frame(app, &frame).unwrap();
 }

@@ -63,9 +63,9 @@ fn model(app: &App) -> Model {
                 .center_position(vec2(-500.0, -500.0))
                 .orbit(Vec2::ZERO, 800.0, false),
         );
-    system.include_setup(&setup, 1_00000);
-
+    system.include_setup(&setup, 100_000);
     system.init_gpu(device);
+    system.dust.clear(); // BAD FIXXXXXXXXXXXXXX
 
     Model { system }
 }
@@ -93,7 +93,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
         gpu_state.update_uniforms(queue, &uniforms);
     }
 
-    model.system.draw(&draw, device, queue, texture_view);
+    model.system.draw(&draw, device, queue, texture_view, 1.0);
 
     draw.to_frame(app, &frame).unwrap();
 }

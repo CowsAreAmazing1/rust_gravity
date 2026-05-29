@@ -35,7 +35,7 @@ pub const QUAD_VERTICES: &[QuadVertex] = &[
 #[derive(Clone, Copy, Pod, Zeroable, Debug)]
 pub struct Uniforms {
     pub scale: f32,
-    aspect_ratio: f32,
+    pub aspect_ratio: f32,
     pub camera_translation: [f32; 2], // Camera drag translation
     pub window_size: [f32; 2],        // [width, height] in pixels
     pub rotation_angle: f32,          // Rotation angle in radians

@@ -48,12 +48,13 @@ fn model(app: &App) -> Model {
             .square(1.0)
             .center_velocity_xy(0.0, 0.94),
     );
-    system.include_setup_random(&setup, 5_000);
+    system.include_setup_random(&setup, 5_000_000);
 
     system.add_attractor(sun);
     system.add_attractor(planet);
 
     system.init_gpu(device);
+    system.dust.clear();
     Model::new(system)
 }
 
@@ -88,7 +89,9 @@ fn view(app: &App, model: &Model, frame: Frame) {
             };
 
             let trans_draw = scale_draw.rotate(planet_angle);
-            model.system.draw(&trans_draw, device, queue, texture_view);
+            model
+                .system
+                .draw(&trans_draw, device, queue, texture_view, 1.0);
 
             Uniforms::with_rotation(
                 model.zoom,
@@ -98,12 +101,16 @@ fn view(app: &App, model: &Model, frame: Frame) {
                 model.system.center_of_mass(),
             )
         } else {
-            model.system.draw(&scale_draw, device, queue, texture_view);
+            model
+                .system
+                .draw(&scale_draw, device, queue, texture_view, 1.0);
             Uniforms::new(model.zoom, model.view_translation, window_rect.wh())
         };
         gpu_state.update_uniforms(queue, &uniforms);
     } else {
-        model.system.draw(&scale_draw, device, queue, texture_view);
+        model
+            .system
+            .draw(&scale_draw, device, queue, texture_view, 1.0);
     }
 
     // scale_draw.translate(model.system.center_of_mass().extend(0.0))
