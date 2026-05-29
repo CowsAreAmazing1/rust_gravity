@@ -1,4 +1,4 @@
-use main_gravity::{Attractor, System};
+use main_gravity::prelude::*;
 use nannou::prelude::*;
 
 fn main() {

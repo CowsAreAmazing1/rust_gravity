@@ -85,10 +85,10 @@ pub trait Body {
         r.normalize() * force_magnitude
     }
 
-    fn draw(&self, draw: &Draw) {
+    fn draw(&self, draw: &Draw, scale: f32) {
         draw.ellipse()
             .xy(self.position())
-            .radius(self.mass().sqrt() * 0.5)
+            .radius(self.mass().sqrt() * 0.5 / scale)
             .color(self.color());
     }
 
@@ -217,10 +217,10 @@ impl Body for Dust {
         self.color
     }
 
-    fn draw(&self, draw: &Draw) {
+    fn draw(&self, draw: &Draw, scale: f32) {
         draw.ellipse()
             .xy(self.position())
-            .radius(2.0)
+            .radius(2.0 * scale)
             .color(self.color());
     }
 
@@ -359,11 +359,11 @@ impl System {
         self.dust.push(dust);
     }
 
-    pub fn include_setup(&mut self, setup: &crate::Setup, num_dust: u32) {
+    pub fn include_setup(&mut self, setup: &crate::scene_layout::Setup, num_dust: u32) {
         self.dust = Vec::with_capacity(std::mem::size_of::<Dust>() * num_dust as usize);
         setup.build(num_dust, &mut self.dust);
     }
-    pub fn include_setup_random(&mut self, setup: &crate::Setup, num_dust: u32) {
+    pub fn include_setup_random(&mut self, setup: &crate::scene_layout::Setup, num_dust: u32) {
         self.dust = Vec::with_capacity(std::mem::size_of::<Dust>() * num_dust as usize);
         setup.build_random(num_dust, &mut self.dust);
     }
@@ -543,10 +543,10 @@ impl System {
         device: &Device,
         queue: &Queue,
         texture_view: &wgpu::TextureView,
-        _zoom: f32, // figure out how to sync gpu scale and draw zooming
+        scale: f32, // figure out how to sync gpu scale and draw zooming
     ) {
         for body in self.get_bodies() {
-            body.draw(draw);
+            body.draw(draw, scale);
         }
 
         if let Some(gpu_state) = &self.gpu_state {

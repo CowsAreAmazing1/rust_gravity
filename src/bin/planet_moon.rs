@@ -1,12 +1,13 @@
-use main_gravity::{Attractor, System};
+use main_gravity::prelude::*;
 use nannou::prelude::*;
 
 fn main() {
-    nannou::app(model).update(update).view(view).run();
+    nannou::app(model).update(update).event(event).run();
 }
 
 struct Model {
     system: System,
+    ih: InteractionHandler,
 }
 
 fn model(app: &App) -> Model {
@@ -25,7 +26,9 @@ fn model(app: &App) -> Model {
     );
     system.add_attractor(moon);
 
-    Model { system }
+    let ih = InteractionHandler::from_rect(&app.window_rect());
+
+    Model { system, ih }
 }
 
 fn update(app: &App, model: &mut Model, _update: Update) {
@@ -48,4 +51,8 @@ fn view(app: &App, model: &Model, frame: Frame) {
     model.system.draw(&draw, device, queue, texture_view, 1.0);
 
     draw.to_frame(app, &frame).unwrap();
+}
+
+fn event(app: &App, model: &mut Model, event: Event) {
+    model.ih.custom_event_handler(app, event);
 }

@@ -1,16 +1,13 @@
-use main_gravity::{prelude::*, Attractor, Quad, Setup, System, Uniforms};
+use main_gravity::prelude::*;
 use nannou::prelude::*;
 
 struct Model {
     system: System,
+    ih: InteractionHandler,
 }
 
 fn model(app: &App) -> Model {
-    app.new_window()
-        .size(1500, 1500)
-        .view(view)
-        .build()
-        .unwrap();
+    app.new_window().size(1500, 800).view(view).build().unwrap();
     let window = app.main_window();
     let device = window.device();
 
@@ -37,45 +34,50 @@ fn model(app: &App) -> Model {
     );
     system.add_attractor(attractor);
 
+    let dist = 200.0;
     let mut setup = Setup::new();
     setup
         .add(
             Quad::new()
                 .square(200.0)
-                .center_position(vec2(500.0, 500.0))
+                .center_position(vec2(dist, dist))
                 .orbit(Vec2::ZERO, 800.0, false),
         )
         .add(
             Quad::new()
                 .square(200.0)
-                .center_position(vec2(-500.0, 500.0))
+                .center_position(vec2(-dist, dist))
                 .orbit(Vec2::ZERO, 800.0, false),
         )
         .add(
             Quad::new()
                 .square(200.0)
-                .center_position(vec2(500.0, -500.0))
+                .center_position(vec2(dist, -dist))
                 .orbit(Vec2::ZERO, 800.0, false),
         )
         .add(
             Quad::new()
                 .square(200.0)
-                .center_position(vec2(-500.0, -500.0))
+                .center_position(vec2(-dist, -dist))
                 .orbit(Vec2::ZERO, 800.0, false),
         );
-    system.include_setup(&setup, 100_000);
+    system.include_setup_random(&setup, 8000000);
     system.init_gpu(device);
     system.dust.clear(); // BAD FIXXXXXXXXXXXXXX
 
-    Model { system }
+    let ih = InteractionHandler::from_rect(&window.rect());
+
+    Model { system, ih }
 }
 
 fn update(app: &App, model: &mut Model, _update: Update) {
-    let window = app.main_window();
-    let device = window.device();
-    let queue = window.queue();
+    if model.ih.play {
+        let window = app.main_window();
+        let device = window.device();
+        let queue = window.queue();
 
-    model.system.update(1.0, 10, Some(device), Some(queue));
+        model.system.update(1.0, 10, Some(device), Some(queue));
+    }
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
@@ -84,12 +86,11 @@ fn view(app: &App, model: &Model, frame: Frame) {
     let queue = window.queue();
     let texture_view = frame.texture_view();
 
-    let draw = app.draw();
+    let draw = model.ih.draw(app.draw());
 
     // Update uniforms before drawing
     if let Some(gpu_state) = &model.system.gpu_state {
-        let window_rect = app.window_rect();
-        let uniforms = Uniforms::new(1.0, Vec2::ZERO, window_rect.wh());
+        let uniforms = model.ih.uniform();
         gpu_state.update_uniforms(queue, &uniforms);
     }
 
@@ -98,6 +99,10 @@ fn view(app: &App, model: &Model, frame: Frame) {
     draw.to_frame(app, &frame).unwrap();
 }
 
+fn event(app: &App, model: &mut Model, event: Event) {
+    model.ih.custom_event_handler(app, event);
+}
+
 fn main() {
-    nannou::app(model).update(update).run();
+    nannou::app(model).update(update).event(event).run();
 }

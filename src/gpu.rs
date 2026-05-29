@@ -32,7 +32,7 @@ pub const QUAD_VERTICES: &[QuadVertex] = &[
 ];
 
 #[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable, Debug)]
+#[derive(Default, Clone, Copy, Pod, Zeroable, Debug)]
 pub struct Uniforms {
     pub scale: f32,
     pub aspect_ratio: f32,
