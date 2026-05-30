@@ -26,9 +26,9 @@ fn model(app: &App) -> Model {
 
     let mut setup = Setup::new();
     setup.add(Disc::new().radius(20.0).center_velocity_xy(-5.0, 0.0));
+
     system.include_setup_random(&setup, 6_000_000);
     system.init_gpu(device);
-    system.dust.clear();
 
     let ih = InteractionHandler::from_rect(&app.window_rect());
 

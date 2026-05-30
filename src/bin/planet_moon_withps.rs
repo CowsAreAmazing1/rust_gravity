@@ -42,7 +42,6 @@ fn model(app: &App) -> Model {
 
     system.include_setup(&setup, 1_000_000);
     system.init_gpu(device);
-    system.dust.clear();
 
     let ih = InteractionHandler::from_rect(&window.rect());
 

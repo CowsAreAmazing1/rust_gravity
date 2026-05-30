@@ -61,9 +61,9 @@ fn model(app: &App) -> Model {
                 .center_position(vec2(-dist, -dist))
                 .orbit(Vec2::ZERO, 800.0, false),
         );
-    system.include_setup_random(&setup, 8000000);
+
+    system.include_setup_random(&setup, 8_000_000);
     system.init_gpu(device);
-    system.dust.clear(); // BAD FIXXXXXXXXXXXXXX
 
     let ih = InteractionHandler::from_rect(&window.rect());
 

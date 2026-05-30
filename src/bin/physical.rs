@@ -15,29 +15,26 @@ fn model(app: &App) -> Model {
     let mut system = System::new();
 
     let mut sun = Attractor::new(Vec2::ZERO, Vec2::ZERO, 100.0, 0.0);
-    let mut planet = Attractor::new(vec2(200.0, 0.0), Vec2::ZERO, 4.0, 100.0);
+    let mut planet = Attractor::new(vec2(200.0, 0.0), Vec2::ZERO, 10.0, 100.0);
 
     sun.orbit_pair(&mut planet, false);
 
-    // let soi = planet.position().x * (planet.mass() / sun.mass()).powf(2.0/5.0);
-    // let spawn_angle = PI / 2.0 + 0.01;
-    // let spawn_vec = vec2(spawn_angle.cos(), spawn_angle.sin());
-
     let mut setup = Setup::new();
-    // setup.add(Quad::new().center_position(planet.position() + 0.4 * soi * spawn_vec).square(10.0).orbit(sun.position(), sun.mass(), false).orbit(planet.position(), planet.mass(), false));
-    setup.add(
-        Quad::new()
-            .center_position(0.3 * sun.position() + 0.7 * planet.position())
-            .square(1.0)
-            .center_velocity_xy(0.0, 0.94),
-    );
-    system.include_setup_random(&setup, 5_000_000);
+    setup
+        .add(
+            Quad::new()
+                .center_position(0.3 * sun.position() + 0.7 * planet.position())
+                .width(10.0)
+                // .center_velocity_xy(0.0, 0.94),
+                .orbit_attractor(&sun, false),
+        )
+        .add(Disc::new().radius(200.0).orbit_attractor(&sun, false));
+
+    system.include_setup_random(&setup, 8_000_000);
+    system.init_gpu(device);
 
     system.add_attractor(sun);
     system.add_attractor(planet);
-
-    system.init_gpu(device);
-    system.dust.clear();
 
     let ih = InteractionHandler::from_rect(&window.rect());
 

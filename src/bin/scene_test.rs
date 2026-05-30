@@ -28,9 +28,9 @@ fn model(app: &App) -> Model {
         .add(Disc::new().center_position(vec2(0.0, 0.0)))
         .add(Disc::new().center_position(vec2(-100.0, 0.0)))
         .add(Disc::new().center_position(vec2(-200.0, 0.0)));
+
     system.include_setup(&setup, 500_000);
     system.init_gpu(device);
-    system.dust.clear();
 
     let ih = InteractionHandler::from_rect(&window.rect());
 

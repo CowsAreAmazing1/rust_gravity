@@ -495,9 +495,11 @@ impl System {
     pub fn get_dusts(&self) -> &[Dust] {
         &self.dust
     }
-    pub fn get_dust_gpu(&self) -> Vec<GpuDust> {
+
+    /// Converts all `Dust`s in the system to `GpuDust`s and
+    pub fn get_dust_gpu(&mut self) -> Vec<GpuDust> {
         self.dust
-            .iter()
+            .drain(..)
             .map(|d| GpuDust::new(d.position(), d.velocity()))
             .collect()
     }
