@@ -15,26 +15,25 @@ fn model(app: &App) -> Model {
     let mut system = System::new();
 
     let mut sun = Attractor::new(Vec2::ZERO, Vec2::ZERO, 100.0, 0.0);
-    let mut planet = Attractor::new(vec2(200.0, 0.0), Vec2::ZERO, 10.0, 100.0);
+    let mut planet = Attractor::new(vec2(200.0, 0.0), Vec2::ZERO, 5.0, 100.0);
 
-    sun.orbit_pair(&mut planet, false);
+    // sun.orbit_pair(&mut planet, false);
+    planet.orbit_pair(&mut sun, false);
 
     let mut setup = Setup::new();
-    setup
-        .add(
-            Quad::new()
-                .center_position(0.3 * sun.position() + 0.7 * planet.position())
-                .width(10.0)
-                // .center_velocity_xy(0.0, 0.94),
-                .orbit_attractor(&sun, false),
-        )
-        .add(Disc::new().radius(200.0).orbit_attractor(&sun, false));
-
-    system.include_setup_random(&setup, 8_000_000);
-    system.init_gpu(device);
+    setup.add(
+        Quad::new()
+            .center_position(0.3 * sun.position() + 0.7 * planet.position())
+            .width(10.0)
+            // .center_velocity_xy(0.0, 0.94),
+            .orbit_attractor(&sun, false),
+    );
 
     system.add_attractor(sun);
     system.add_attractor(planet);
+
+    system.include_setup_random(&setup, 8_000_000);
+    system.init_gpu(device);
 
     let ih = InteractionHandler::from_rect(&window.rect());
 
@@ -48,7 +47,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
 
     model
         .system
-        .update(model.ih.dt, 5, Some(device), Some(queue));
+        .update(model.ih.dt, 10, Some(device), Some(queue));
 
     let com = model.system.center_of_mass();
     let planet = model.system.get_body(1).unwrap();

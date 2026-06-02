@@ -203,6 +203,11 @@ impl Disc {
         self.outer_radius = radius;
         self
     }
+    pub fn ring(mut self, radius: f32) -> Self {
+        self.inner_radius = radius;
+        self.outer_radius = radius;
+        self
+    }
 }
 
 impl Default for Disc {

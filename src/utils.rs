@@ -129,7 +129,7 @@ impl Default for InteractionHandler {
             last_mouse_pos: None,
             rotate: false,
             play: true,
-            dt: 1.1,
+            dt: 1.0,
             scale: 1.0,
             camera_translation: Vec2::ZERO,
             window_size: vec2(100.0, 100.0),
