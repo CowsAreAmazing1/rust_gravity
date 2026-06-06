@@ -3,7 +3,7 @@ use nannou::{
     wgpu::{Device, Queue},
 };
 
-use crate::{gpu, GpuAttractor, GpuDust, GpuState};
+use crate::{gpu, GpuAttractor, GpuColor, GpuDust, GpuState};
 
 #[derive(Clone, Copy, Debug)]
 pub struct State {
@@ -373,7 +373,14 @@ impl System {
     }
 
     pub fn init_gpu(&mut self, device: &Device) {
-        let gpu_state = GpuState::new(device, &self.get_bodies_gpu(), &self.get_dust_gpu());
+        let attractors = self.get_bodies_gpu();
+        let dust_particles = self.get_dust_gpu();
+        let colors = dust_particles
+            .iter()
+            .enumerate()
+            .map(|(i, _)| GpuColor::new(i as f32 / dust_particles.len() as f32 * 255.0))
+            .collect::<Vec<GpuColor>>();
+        let gpu_state = GpuState::new(device, &attractors, &dust_particles, &colors);
         self.gpu_state = Some(gpu_state);
     }
 
@@ -498,6 +505,11 @@ impl System {
 
     /// Converts all `Dust`s in the system to `GpuDust`s and
     pub fn get_dust_gpu(&mut self) -> Vec<GpuDust> {
+        println!(
+            "Converting {} dust particles to GPU format",
+            self.dust.len()
+        );
+
         self.dust
             .drain(..)
             .map(|d| GpuDust::new(d.position(), d.velocity()))
@@ -576,6 +588,7 @@ impl System {
                 render_pass.set_bind_group(0, &gpu_state.uniform_bind_group, &[]);
                 render_pass.set_vertex_buffer(0, gpu_state.vertex_buffer.slice(..));
                 render_pass.set_vertex_buffer(1, gpu_state.dust_buffer.slice(..));
+                render_pass.set_vertex_buffer(2, gpu_state.color_buffer.slice(..));
 
                 render_pass.draw(
                     0..gpu::QUAD_VERTICES.len() as u32,

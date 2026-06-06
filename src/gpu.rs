@@ -120,34 +120,54 @@ impl GpuDust {
         wgpu::VertexBufferLayout {
             array_stride: mem::size_of::<GpuDust>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 1, // @location(1) particle_pos
-                    format: wgpu::VertexFormat::Float32x2,
-                },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
-                    shader_location: 2, // @location(2) particle_vel
-                    format: wgpu::VertexFormat::Float32x2,
-                },
-            ],
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 1, // @location(1) particle_pos
+                format: wgpu::VertexFormat::Float32x2,
+            }],
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable, Debug)]
+pub struct GpuColor {
+    value: f32,
+}
+
+impl GpuColor {
+    pub fn new(value: f32) -> Self {
+        Self { value }
+    }
+
+    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        use std::mem;
+        wgpu::VertexBufferLayout {
+            array_stride: mem::size_of::<GpuColor>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 2,
+                format: wgpu::VertexFormat::Float32,
+            }],
         }
     }
 }
 
 pub struct GpuState {
     compute_pipeline: wgpu::ComputePipeline,
-    pub render_pipeline: wgpu::RenderPipeline,
-    pub attractor_buffer: wgpu::Buffer,
-    pub dust_buffer: wgpu::Buffer,
-    pub vertex_buffer: wgpu::Buffer,
-    pub uniform_buffer: wgpu::Buffer,
-    pub dispatch_buffer: wgpu::Buffer,
-    pub attractor_bind_group: wgpu::BindGroup,
-    pub dust_bind_group: wgpu::BindGroup,
-    pub uniform_bind_group: wgpu::BindGroup,
-    pub dispatch_bind_group: wgpu::BindGroup,
+    pub(crate) render_pipeline: wgpu::RenderPipeline,
+    attractor_buffer: wgpu::Buffer,
+    pub(crate) dust_buffer: wgpu::Buffer,
+    pub(crate) color_buffer: wgpu::Buffer,
+    pub(crate) vertex_buffer: wgpu::Buffer,
+    uniform_buffer: wgpu::Buffer,
+    dispatch_buffer: wgpu::Buffer,
+    attractor_bind_group: wgpu::BindGroup,
+    dust_bind_group: wgpu::BindGroup,
+    color_bind_group: wgpu::BindGroup,
+    pub(crate) uniform_bind_group: wgpu::BindGroup,
+    dispatch_bind_group: wgpu::BindGroup,
 
     pub num_particles: u32,
 }
@@ -157,6 +177,7 @@ impl GpuState {
         device: &wgpu::Device,
         attractors: &[GpuAttractor],
         dust_particles: &[GpuDust],
+        colors: &[GpuColor],
     ) -> Self {
         let attractor_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Attractor Buffer"),
@@ -168,6 +189,12 @@ impl GpuState {
             label: Some("Dust Buffer"),
             contents: bytemuck::cast_slice(dust_particles),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::VERTEX, // | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let color_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Color Buffer"),
+            contents: bytemuck::cast_slice(colors),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::VERTEX,
         });
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -239,6 +266,30 @@ impl GpuState {
             label: Some("Dust Bind Group"),
         });
 
+        let color_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+                label: Some("Color Bind Group Layout"),
+            });
+
+        let color_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &color_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: color_buffer.as_entire_binding(),
+            }],
+            label: Some("Dust Bind Group"),
+        });
+
         let uniform_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[wgpu::BindGroupLayoutEntry {
@@ -304,6 +355,7 @@ impl GpuState {
                 label: Some("Compute Pipeline Layout"),
                 bind_group_layouts: &[
                     &dust_bind_group_layout,
+                    &color_bind_group_layout,
                     &attractor_bind_group_layout,
                     &dispatch_bind_group_layout,
                 ],
@@ -331,7 +383,7 @@ impl GpuState {
             vertex: wgpu::VertexState {
                 module: &render_shader,
                 entry_point: "vs_main",
-                buffers: &[QuadVertex::desc(), GpuDust::desc()],
+                buffers: &[QuadVertex::desc(), GpuDust::desc(), GpuColor::desc()],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &render_shader,
@@ -365,11 +417,13 @@ impl GpuState {
             render_pipeline,
             attractor_buffer,
             dust_buffer,
+            color_buffer,
             vertex_buffer,
             uniform_buffer,
             dispatch_buffer,
             attractor_bind_group,
             dust_bind_group,
+            color_bind_group,
             uniform_bind_group,
             dispatch_bind_group,
 
@@ -416,8 +470,9 @@ impl GpuState {
                     });
                 compute_pass.set_pipeline(&self.compute_pipeline);
                 compute_pass.set_bind_group(0, &self.dust_bind_group, &[]);
-                compute_pass.set_bind_group(1, &self.attractor_bind_group, &[]);
-                compute_pass.set_bind_group(2, &self.dispatch_bind_group, &[]);
+                compute_pass.set_bind_group(1, &self.color_bind_group, &[]);
+                compute_pass.set_bind_group(2, &self.attractor_bind_group, &[]);
+                compute_pass.set_bind_group(3, &self.dispatch_bind_group, &[]);
                 compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
             }
             queue.submit(Some(compute_encoder.finish()));

@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bytemuck = "1.24.0"
-differential-equations = "0.5.2"
-nalgebra = "0.34.1"
+bytemuck = "1.25.0"
+differential-equations = "0.6.1"
+nalgebra = "0.35.0"
 nannou = "0.19.0"
 nannou_egui = "0.19.0"
 plotters = "0.3.7"

@@ -12,7 +12,7 @@ struct Uniforms {
 struct VertexInput {
     @location(0) quad_pos: vec2<f32>,
     @location(1) particle_pos: vec2<f32>,
-    @location(2) particle_vel: vec2<f32>,
+    @location(2) in_color: f32,
 };
 
 struct VertexOutput {
@@ -43,7 +43,7 @@ fn vs_main(input: VertexInput) -> VertexOutput {
     var output: VertexOutput;
     output.position = vec4<f32>(ndc, 0.0, 1.0);
 
-    output.color = vec4<f32>(input.particle_vel, 0.0, 1.0);
+    output.color = vec4<f32>(input.in_color, 0.0, 0.0, 1.0);
     return output;
 }
 

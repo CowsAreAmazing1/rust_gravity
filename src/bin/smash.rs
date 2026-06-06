@@ -36,13 +36,15 @@ fn model(app: &App) -> Model {
 }
 
 fn update(app: &App, model: &mut Model, _update: Update) {
-    let window = app.main_window();
-    let device = window.device();
-    let queue = window.queue();
+    if model.ih.play {
+        let window = app.main_window();
+        let device = window.device();
+        let queue = window.queue();
 
-    model
-        .system
-        .update(model.ih.dt, 10, Some(device), Some(queue));
+        model
+            .system
+            .update(model.ih.dt, 10, Some(device), Some(queue));
+    }
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {

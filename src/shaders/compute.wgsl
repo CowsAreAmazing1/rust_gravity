@@ -4,12 +4,14 @@ struct Particle {
 };
 @group(0) @binding(0) var<storage, read_write> particles: array<Particle>;
 
+@group(1) @binding(0) var<storage, read_write> colors: array<f32>;
+
 struct Attractor {
     pos: vec2<f32>,
     mass: f32,
     _padding: f32,
 }
-@group(1) @binding(0) var<storage, read> attractors: array<Attractor>;
+@group(2) @binding(0) var<storage, read> attractors: array<Attractor>;
 
 struct DispatchParams {
     offset: u32,
@@ -18,7 +20,7 @@ struct DispatchParams {
     // max_speed: f32,
     // frame: u32,
 };
-@group(2) @binding(0) var<uniform> params: DispatchParams;
+@group(3) @binding(0) var<uniform> params: DispatchParams;
 
 fn calculate_acceleration(pos: vec2<f32>) -> vec2<f32> {
     let num_attractors = arrayLength(&attractors);
@@ -86,6 +88,10 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let integrated = rk4_step(p.pos, p.vel, dt);
 
     particles[i] = integrated;
+
+    // let color_value = length(calculate_acceleration(p.pos));
+    let color_value = length(p.vel);
+    colors[i] = color_value;
 }
 
 fn improved_hash(seed: u32) -> u32 {
