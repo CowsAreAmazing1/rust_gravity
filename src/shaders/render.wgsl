@@ -1,4 +1,3 @@
-
 struct Uniforms {
     scale: f32,
     aspect_ratio: f32,
@@ -25,16 +24,16 @@ struct VertexOutput {
 fn vs_main(input: VertexInput) -> VertexOutput {
     let particle_size = 0.5 / sqrt(uniforms.scale);
     let world_pos = input.particle_pos + input.quad_pos * particle_size;
-    
+
     // Dragged position first
     let translated_pos = world_pos - uniforms.camera_translation;
-    
+
     // second, rotation around ( rotation_center - camera_translation )
     let rotation_center_translated = uniforms.rotation_center - uniforms.camera_translation;
     let pos_relative_to_center = translated_pos - rotation_center_translated;
     let rotated_pos = rotate2d(pos_relative_to_center, uniforms.rotation_angle);
     let final_pos = rotated_pos + rotation_center_translated;
-    
+
     // Lastly scale
     let camera_pos = final_pos * uniforms.scale;
 
@@ -43,7 +42,7 @@ fn vs_main(input: VertexInput) -> VertexOutput {
 
     var output: VertexOutput;
     output.position = vec4<f32>(ndc, 0.0, 1.0);
-    
+
     output.color = vec4<f32>(input.particle_vel, 0.0, 1.0);
     return output;
 }
@@ -59,9 +58,6 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     return vec4<f32>(rgb, 1.0);
 }
 
-
-
-
 fn rotate2d(pos: vec2<f32>, angle: f32) -> vec2<f32> {
     let cos_angle = cos(angle);
     let sin_angle = sin(angle);
@@ -70,8 +66,6 @@ fn rotate2d(pos: vec2<f32>, angle: f32) -> vec2<f32> {
         pos.x * sin_angle + pos.y * cos_angle
     );
 }
-
-
 
 fn modulo(a: f32, b: f32) -> f32 {
     return a - b * floor(a / b);
@@ -86,15 +80,15 @@ fn hsv_to_rgb(hsv: vec3<f32>) -> vec3<f32> {
     let x = c * (1.0 - abs(modulo(h * 6.0, 2.0) - 1.0));
     let m = v - c;
 
-    if (h < 1.0 / 6.0) {
+    if h < 1.0 / 6.0 {
         return vec3<f32>(c, x, 0.0) + vec3<f32>(m, m, m);
-    } else if (h < 2.0 / 6.0) {
+    } else if h < 2.0 / 6.0 {
         return vec3<f32>(x, c, 0.0) + vec3<f32>(m, m, m);
-    } else if (h < 3.0 / 6.0) {
+    } else if h < 3.0 / 6.0 {
         return vec3<f32>(0.0, c, x) + vec3<f32>(m, m, m);
-    } else if (h < 4.0 / 6.0) {
+    } else if h < 4.0 / 6.0 {
         return vec3<f32>(0.0, x, c) + vec3<f32>(m, m, m);
-    } else if (h < 5.0 / 6.0) {
+    } else if h < 5.0 / 6.0 {
         return vec3<f32>(x, 0.0, c) + vec3<f32>(m, m, m);
     } else {
         return vec3<f32>(c, 0.0, x) + vec3<f32>(m, m, m);

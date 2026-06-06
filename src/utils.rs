@@ -21,6 +21,23 @@ pub struct InteractionHandler {
     pub rotation_center: Vec2,    // Point to rotate around (in world coordinates)
 }
 
+impl Default for InteractionHandler {
+    fn default() -> Self {
+        Self {
+            dragging: false,
+            last_mouse_pos: None,
+            rotate: false,
+            play: false,
+            dt: 1.0,
+            scale: 1.0,
+            camera_translation: Vec2::ZERO,
+            window_size: vec2(100.0, 100.0),
+            rotation_angle: 0.0,
+            rotation_center: Vec2::ZERO,
+        }
+    }
+}
+
 impl InteractionHandler {
     pub fn from_rect(rect: &Rect) -> Self {
         InteractionHandler {
@@ -118,23 +135,6 @@ impl InteractionHandler {
                 WindowEvent::Resized(size) => self.window_size = size,
                 _ => {}
             }
-        }
-    }
-}
-
-impl Default for InteractionHandler {
-    fn default() -> Self {
-        Self {
-            dragging: false,
-            last_mouse_pos: None,
-            rotate: false,
-            play: true,
-            dt: 1.0,
-            scale: 1.0,
-            camera_translation: Vec2::ZERO,
-            window_size: vec2(100.0, 100.0),
-            rotation_angle: 0.0,
-            rotation_center: Vec2::ZERO,
         }
     }
 }
