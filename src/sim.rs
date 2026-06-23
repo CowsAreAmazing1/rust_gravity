@@ -125,6 +125,7 @@ impl Attractor {
         self.velocity = direction * speed;
     }
 
+    /// Modifies self and other to be in a stable orbit around their common center of mass, with self as the "planet" and other as the "sun". If `planet_clockwise` is true, the planet will orbit clockwise around the sun.
     pub fn orbit_pair(&mut self, other: &mut Attractor, planet_clockwise: bool) {
         let r = other.position - self.position;
         let distance = r.length();

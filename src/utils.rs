@@ -7,6 +7,7 @@ use nannou::{
 
 use crate::Uniforms;
 
+#[derive(Clone, Copy)]
 pub struct InteractionHandler {
     dragging: bool,
     last_mouse_pos: Option<Vec2>,
@@ -46,6 +47,16 @@ impl InteractionHandler {
         }
     }
 
+    pub fn set_dt(&mut self, dt: f32) -> Self {
+        self.dt = dt;
+        *self
+    }
+
+    pub fn set_scale(&mut self, scale: f32) -> Self {
+        self.scale = scale;
+        *self
+    }
+
     pub fn uniform(&self) -> Uniforms {
         if self.rotate {
             Uniforms::with_rotation(
@@ -60,11 +71,12 @@ impl InteractionHandler {
         }
     }
 
+    /// Transforms the draw context based on the current interaction state (scale, translation, rotation).
     pub fn draw(&self, draw: Draw) -> Draw {
         let camera_translation = self.camera_translation.extend(0.0);
         let rotation_center = self.rotation_center.extend(0.0);
 
-        let mut new_draw = draw.translate(-camera_translation);
+        let mut new_draw = draw.scale(self.scale).translate(-camera_translation);
 
         if self.rotate {
             let rotated_center = rotation_center - camera_translation;
@@ -78,7 +90,7 @@ impl InteractionHandler {
                 ;
         }
 
-        new_draw.scale(self.scale)
+        new_draw
     }
 
     pub fn custom_event_handler(&mut self, app: &App, event: Event) {
