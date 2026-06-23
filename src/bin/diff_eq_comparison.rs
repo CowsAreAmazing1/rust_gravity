@@ -16,17 +16,9 @@ macro_rules! make_state {
         struct StateVec {
             positions: [f64; $n],
             velocities: [f64; $n],
-            // other: Vec<f64>,
         }
     };
 }
-
-// #[derive(State)]
-// struct StateVec {
-//     positions: [f64; 6],
-//     velocities: [f64; 6],
-//     other: Vec<f64>,
-// }
 
 // positions:  [x1,  y1,  x2,  y2,  ...]
 // velocities: [vx1, vy1, vx2, vy2, ...]
@@ -45,12 +37,9 @@ impl StateVec {
             velocities[i * 2 + 1] = body.velocity().y as f64;
         }
 
-        let other = Vec::new();
-
         Self {
             positions,
             velocities,
-            other,
         }
     }
 
@@ -565,7 +554,12 @@ fn update(app: &App, model: &mut Model, _update: Update) {
         .system
         .update(model.ih.dt, 5, Some(device), Some(queue));
 
-    let masses = model.system.get_masses();
+    let masses = model
+        .system
+        .get_masses()
+        .iter()
+        .map(|&m| m as f64)
+        .collect();
     let ode_system = GravitationalODE::new(masses);
 
     model

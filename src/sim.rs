@@ -503,6 +503,9 @@ impl System {
     pub fn get_dusts(&self) -> &[Dust] {
         &self.dust
     }
+    pub fn get_masses(&self) -> Vec<f32> {
+        self.attractors.iter().map(|b| b.mass()).collect()
+    }
 
     /// Converts all `Dust`s in the system to `GpuDust`s and
     pub fn get_dust_gpu(&mut self) -> Vec<GpuDust> {

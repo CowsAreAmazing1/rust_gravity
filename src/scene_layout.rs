@@ -97,7 +97,7 @@ impl Default for Setup {
 }
 
 pub trait SetupObject {
-    /// Add an operation to this builder and return the updated builder.
+    /// Return an updated builder with the new operation.
     fn add_operation(self, op: CreationOperation) -> Self
     where
         Self: Sized;
