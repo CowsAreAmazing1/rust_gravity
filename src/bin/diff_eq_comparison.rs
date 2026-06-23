@@ -121,8 +121,9 @@ impl ODE<f64, StateVec> for GravitationalODE {
 
 struct MethodTester<M: OrdinaryNumericalMethod<f64, StateVec>> {
     name: String,
-    method_fn: fn(f64) -> M,
     state: StateVec,
+    method_fn: fn(f64) -> M,
+    method: M,
     data: [Vec<Vec2>; STATE_SIZE / 2],
 }
 
@@ -130,12 +131,22 @@ impl<M> MethodTester<M>
 where
     M: OrdinaryNumericalMethod<f64, StateVec>,
 {
-    fn update(&mut self, ode_system: &GravitationalODE, dt: f64, max_trail_length: usize) {
-        let mut method = (self.method_fn)(dt);
-        method.init(&ode_system, 0.0, dt, &self.state).unwrap();
-        method.step(&ode_system).unwrap();
+    fn new(name: String, method_fn: fn(f64) -> M, state: StateVec) -> Self {
+        Self {
+            name,
+            state,
+            method_fn,
+            method: (method_fn)(1.0),
+            data: Default::default(),
+        }
+    }
 
-        let new_state = *method.y();
+    fn update(&mut self, ode_system: &GravitationalODE, dt: f64, max_trail_length: usize) {
+        self.method = (self.method_fn)(dt);
+        self.method.init(&ode_system, 0.0, dt, &self.state).unwrap();
+        self.method.step(&ode_system).unwrap();
+
+        let new_state = *self.method.y();
         self.state = new_state;
 
         for i in 0..STATE_SIZE / 2 {
@@ -147,6 +158,10 @@ where
             if self.data[i].len() > max_trail_length {
                 self.data[i].remove(0);
             }
+        }
+
+        if self.name == "RK4" {
+            println!("Rk4 stages: {:#?}", self.method.stage_states().unwrap());
         }
     }
 
@@ -237,120 +252,80 @@ impl Everything {
         colors.shuffle(&mut rand::thread_rng());
         colors.truncate(19);
 
-        let euler = MethodTester {
-            name: "Euler".into(),
-            method_fn: ExplicitRungeKutta::euler,
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
-        let heun = MethodTester {
-            name: "Heun".into(),
-            method_fn: ExplicitRungeKutta::heun,
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
-        let midpoint = MethodTester {
-            name: "Midpoint".into(),
-            method_fn: ExplicitRungeKutta::midpoint,
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
-        let ralston = MethodTester {
-            name: "Ralston".into(),
-            method_fn: ExplicitRungeKutta::ralston,
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
-        let ssp_rk3 = MethodTester {
-            name: "SSP-RK3".into(),
-            method_fn: ExplicitRungeKutta::ssp_rk3,
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
-        let three_eighths = MethodTester {
-            name: "Three-Eighths".into(),
-            method_fn: ExplicitRungeKutta::three_eighths,
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
-        let rk4 = MethodTester {
-            name: "RK4".into(),
-            method_fn: ExplicitRungeKutta::rk4,
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
-        let cash_karp = MethodTester {
-            name: "Cash-Karp".into(),
-            method_fn: |dt: f64| ExplicitRungeKutta::cash_karp().h_min(dt).h_max(dt),
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
-        let dop853 = MethodTester {
-            name: "Dop853".into(),
-            method_fn: |dt: f64| ExplicitRungeKutta::dop853().h_min(dt).h_max(dt),
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
-        let dopri5 = MethodTester {
-            name: "Dopri5".into(),
-            method_fn: |dt: f64| ExplicitRungeKutta::dopri5().h_min(dt).h_max(dt),
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
-        let rkf45 = MethodTester {
-            name: "RKF45".into(),
-            method_fn: |dt: f64| ExplicitRungeKutta::rkf45().h_min(dt).h_max(dt),
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
-        let rkv655e = MethodTester {
-            name: "RKV655E".into(),
-            method_fn: |dt: f64| ExplicitRungeKutta::rkv655e().h_min(dt).h_max(dt),
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
-        let rkv656e = MethodTester {
-            name: "RKV656E".into(),
-            method_fn: |dt: f64| ExplicitRungeKutta::rkv656e().h_min(dt).h_max(dt),
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
-        let rkv766e = MethodTester {
-            name: "RKV766E".into(),
-            method_fn: |dt: f64| ExplicitRungeKutta::rkv766e().h_min(dt).h_max(dt),
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
-        let rkv767e = MethodTester {
-            name: "RKV767E".into(),
-            method_fn: |dt: f64| ExplicitRungeKutta::rkv767e().h_min(dt).h_max(dt),
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
-        let rkv877e = MethodTester {
-            name: "RKV877E".into(),
-            method_fn: |dt: f64| ExplicitRungeKutta::rkv877e().h_min(dt).h_max(dt),
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
-        let rkv878e = MethodTester {
-            name: "RKV878E".into(),
-            method_fn: |dt: f64| ExplicitRungeKutta::rkv878e().h_min(dt).h_max(dt),
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
-        let rkv988e = MethodTester {
-            name: "RKV988E".into(),
-            method_fn: |dt: f64| ExplicitRungeKutta::rkv988e().h_min(dt).h_max(dt),
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
-        let rkv989e = MethodTester {
-            name: "RKV989E".into(),
-            method_fn: |dt: f64| ExplicitRungeKutta::rkv989e().h_min(dt).h_max(dt),
-            state: StateVec::from_system(system),
-            data: Default::default(),
-        };
+        let init_state = StateVec::from_system(system);
+
+        let euler = MethodTester::new("Euler".into(), ExplicitRungeKutta::euler, init_state);
+        let heun = MethodTester::new("Heun".into(), ExplicitRungeKutta::heun, init_state);
+        let midpoint =
+            MethodTester::new("Midpoint".into(), ExplicitRungeKutta::midpoint, init_state);
+        let ralston = MethodTester::new("Ralston".into(), ExplicitRungeKutta::ralston, init_state);
+        let ssp_rk3 = MethodTester::new("SSP-RK3".into(), ExplicitRungeKutta::ssp_rk3, init_state);
+        let three_eighths = MethodTester::new(
+            "Three-Eighths".into(),
+            ExplicitRungeKutta::three_eighths,
+            init_state,
+        );
+        let rk4 = MethodTester::new("RK4".into(), ExplicitRungeKutta::rk4, init_state);
+        let cash_karp = MethodTester::new(
+            "Cash-Karp".into(),
+            |dt: f64| ExplicitRungeKutta::cash_karp().h_min(dt).h_max(dt),
+            init_state,
+        );
+        let dop853 = MethodTester::new(
+            "Dop853".into(),
+            |dt: f64| ExplicitRungeKutta::dop853().h_min(dt).h_max(dt),
+            init_state,
+        );
+        let dopri5 = MethodTester::new(
+            "Dopri5".into(),
+            |dt: f64| ExplicitRungeKutta::dopri5().h_min(dt).h_max(dt),
+            init_state,
+        );
+        let rkf45 = MethodTester::new(
+            "RKF45".into(),
+            |dt: f64| ExplicitRungeKutta::rkf45().h_min(dt).h_max(dt),
+            init_state,
+        );
+        let rkv655e = MethodTester::new(
+            "RKV655E".into(),
+            |dt: f64| ExplicitRungeKutta::rkv655e().h_min(dt).h_max(dt),
+            init_state,
+        );
+        let rkv656e = MethodTester::new(
+            "RKV656E".into(),
+            |dt: f64| ExplicitRungeKutta::rkv656e().h_min(dt).h_max(dt),
+            init_state,
+        );
+        let rkv766e = MethodTester::new(
+            "RKV766E".into(),
+            |dt: f64| ExplicitRungeKutta::rkv766e().h_min(dt).h_max(dt),
+            init_state,
+        );
+        let rkv767e = MethodTester::new(
+            "RKV767E".into(),
+            |dt: f64| ExplicitRungeKutta::rkv767e().h_min(dt).h_max(dt),
+            init_state,
+        );
+        let rkv877e = MethodTester::new(
+            "RKV877E".into(),
+            |dt: f64| ExplicitRungeKutta::rkv877e().h_min(dt).h_max(dt),
+            init_state,
+        );
+        let rkv878e = MethodTester::new(
+            "RKV878E".into(),
+            |dt: f64| ExplicitRungeKutta::rkv878e().h_min(dt).h_max(dt),
+            init_state,
+        );
+        let rkv988e = MethodTester::new(
+            "RKV988E".into(),
+            |dt: f64| ExplicitRungeKutta::rkv988e().h_min(dt).h_max(dt),
+            init_state,
+        );
+        let rkv989e = MethodTester::new(
+            "RKV989E".into(),
+            |dt: f64| ExplicitRungeKutta::rkv989e().h_min(dt).h_max(dt),
+            init_state,
+        );
 
         Self {
             colors,
