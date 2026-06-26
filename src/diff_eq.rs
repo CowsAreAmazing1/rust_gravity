@@ -3,9 +3,15 @@ use differential_equations::{
     ode::{OrdinaryNumericalMethod, ODE},
     traits::Real,
 };
-use nannou::prelude::*;
+use nannou::{
+    prelude::*,
+    wgpu::{Device, Queue},
+};
 
-use crate::sim::{Body, System};
+use crate::{
+    sim::{Body, System},
+    GpuAttractor, GpuState,
+};
 
 pub type VV = SymplecticIntegrator<Ordinary, Fixed, f64, Vec<f64>, 2>;
 pub type RK4 = ExplicitRungeKutta<Ordinary, Fixed, f64, Vec<f64>, 4, 4, 4>;
@@ -130,7 +136,7 @@ impl State {
         let mut positions = Vec::new();
         let mut velocities = Vec::new();
 
-        for body in system.get_bodies().iter() {
+        for body in system.get_attractors().iter() {
             positions.push(body.position().x as f64);
             positions.push(body.position().y as f64);
             velocities.push(body.velocity().x as f64);
@@ -181,6 +187,16 @@ impl State {
         }
         out
     }
+
+    fn vec_to_attractors(vec: &Vec<f64>, masses: &Vec<f64>) -> Vec<GpuAttractor> {
+        let positions = vec[..vec.len() / 2]
+            .chunks(2)
+            .map(|chk| vec2(chk[0] as f32, chk[1] as f32));
+        positions
+            .zip(masses)
+            .map(|(pos, mass)| GpuAttractor::new(pos, *mass as f32))
+            .collect()
+    }
 }
 
 /// Handles numerical integration of the ODE by adapting a crate::System to work with differential_equations.
@@ -214,8 +230,12 @@ where
         ode: &GravitationalODE,
         dt: f64,
         sub_steps: u32,
+        device: Option<&Device>,
+        queue: Option<&Queue>,
+        mut gpu_state: Option<&mut GpuState>,
     ) -> Vec<(Vec2, Vec2)> {
-        let mut method = (M::method_fn())(dt / sub_steps as f64);
+        let sub_dt = dt / sub_steps as f64;
+        let mut method = (M::method_fn())(sub_dt);
 
         let y0 = &state.to_vec();
         method.init(ode, 0.0, dt, y0).unwrap();
@@ -224,18 +244,18 @@ where
         for _ in 0..sub_steps {
             method.step(&ode).unwrap();
             self.stages = method.stage_states().unwrap().into();
+
+            // Run compute shader for dust
+            if let (Some(device), Some(queue)) = (device, queue) {
+                let attractors = State::vec_to_attractors(&method.y(), &ode.masses);
+                if let Some(ref mut gpu_state) = gpu_state {
+                    gpu_state.update(sub_dt as f32, device, queue, &attractors);
+                }
+            }
         }
 
         let state = State::from_vec(&method.y());
         self.method = Some(method);
         state.out()
     }
-
-    // fn sub_update(&mut self, &mut method: M, ode: &GravitationalODE) -M {
-
-    // if let Some(ref mut method) = self.method {
-    //     method.step(&ode).unwrap();
-    //     self.stages = method.stage_states().unwrap().into();
-    // }
-    // }
 }

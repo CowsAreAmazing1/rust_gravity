@@ -25,7 +25,7 @@ impl StateVec {
         let mut positions = Vec::new();
         let mut velocities = Vec::new();
 
-        for body in system.get_bodies().iter() {
+        for body in system.get_attractors().iter() {
             positions.push(body.position().x as f64);
             positions.push(body.position().y as f64);
             velocities.push(body.velocity().x as f64);
@@ -437,7 +437,7 @@ fn model(app: &App) -> Model {
     // println!("{:?}", ode_solution.timer);
 
     let everything = Everything::new(&system);
-    let num = system.get_bodies().len();
+    let num = system.get_attractors().len();
 
     Model {
         ih,
@@ -471,7 +471,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
         .update(&ode_system, model.ih.dt as f64, model.max_trail_length);
 
     for i in 0..model.data.len() {
-        if let Some(body) = model.system.get_bodies().get(i) {
+        if let Some(body) = model.system.get_attractors().get(i) {
             model.data[i].push(vec2(body.position().x, body.position().y));
             if model.data[i].len() > model.max_trail_length {
                 model.data[i].remove(0);
@@ -501,11 +501,11 @@ fn view(app: &App, model: &Model, frame: Frame) {
     }
     let com = model
         .system
-        .get_bodies()
+        .get_attractors()
         .iter()
         .map(|b| b.position())
         .fold(Vec2::ZERO, |acc, p| acc + p)
-        / model.system.get_bodies().len() as f32;
+        / model.system.get_attractors().len() as f32;
     draw.translate(com.extend(0.0)).text("My RK4");
 
     model.everything.draw(&draw, model.ih.scale, 100.0);

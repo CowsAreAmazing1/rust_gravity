@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use differential_equations::ode::OrdinaryNumericalMethod;
 use nannou::{
     prelude::*,
@@ -220,7 +222,7 @@ where
     }
 
     pub fn init_gpu(&mut self, device: &Device) {
-        let attractors = self.get_bodies_gpu();
+        let attractors = self.get_attractors_gpu();
         let dust_particles = self.get_dust_gpu();
         let colors = dust_particles
             .iter()
@@ -231,6 +233,17 @@ where
         self.gpu_state = Some(gpu_state);
     }
 
+    // pub fn update(
+    //     &mut self,
+    //     dt: f64,
+    //     sub_steps: u32,
+    //     device: Option<&Device>,
+    //     queue: Option<&Queue>,
+    // ) {
+    //     self.update_diff_eq(dt, sub_steps, device, queue);
+    //     self.steps += 1;
+    // }
+
     // Main update
     pub fn update(
         &mut self,
@@ -239,17 +252,19 @@ where
         device: Option<&Device>,
         queue: Option<&Queue>,
     ) {
-        self.update_diff_eq(dt, sub_steps);
-
-        self.steps += 1;
-    }
-
-    fn update_diff_eq(&mut self, dt: f64, sub_steps: u32) {
         let ode = GravitationalODE::new(self.get_masses());
         let state = State::from_system(self);
 
         // self.integrator.init(dt, &state, &ode);
-        let out = self.integrator.update(&state, &ode, dt, sub_steps);
+        let out = self.integrator.update(
+            &state,
+            &ode,
+            dt,
+            sub_steps,
+            device,
+            queue,
+            self.gpu_state.as_mut(),
+        );
 
         self.attractors
             .iter_mut()
@@ -257,14 +272,6 @@ where
             .for_each(|(body, (pos, vel))| {
                 body.set_state(pos, vel);
             });
-
-        // Run compute shader for dust
-        //         if let (Some(device), Some(queue)) = (device, queue) {
-        //             let attractors = self.get_bodies_gpu();
-        //             if let Some(gpu_state) = &mut self.gpu_state {
-        //                 gpu_state.update(sub_dt, device, queue, &attractors);
-        //             }
-        //         }
     }
 
     /// Updates the system until condition is met or max steps reached
@@ -284,10 +291,10 @@ where
         }
     }
 
-    pub fn get_bodies(&self) -> &[Attractor] {
+    pub fn get_attractors(&self) -> &[Attractor] {
         &self.attractors
     }
-    pub fn get_bodies_gpu(&self) -> Vec<GpuAttractor> {
+    pub fn get_attractors_gpu(&self) -> Vec<GpuAttractor> {
         self.attractors
             .iter()
             .map(|b| GpuAttractor::new(b.position(), b.mass()))
@@ -307,10 +314,17 @@ where
             self.dust.len()
         );
 
-        self.dust
+        let now = Instant::now();
+
+        let dusts = self
+            .dust
             .drain(..)
             .map(|d| GpuDust::new(d.position(), d.velocity()))
-            .collect()
+            .collect();
+
+        println!("Done, took {}s", now.elapsed().as_secs_f64());
+
+        dusts
     }
 
     pub fn get_attractor(&self, index: usize) -> Option<&Attractor> {
@@ -356,7 +370,7 @@ where
         texture_view: &wgpu::TextureView,
         scale: f32, // figure out how to sync gpu scale and draw zooming
     ) {
-        for body in self.get_bodies() {
+        for body in self.get_attractors() {
             body.draw(draw, scale);
         }
 
