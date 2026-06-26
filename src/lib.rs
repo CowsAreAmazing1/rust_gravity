@@ -1,6 +1,7 @@
 // lib.rs - Main library file
 // This file makes your crate available as a library
 
+pub mod diff_eq;
 pub mod gpu;
 pub mod scene_layout;
 pub mod sim;
@@ -22,6 +23,7 @@ pub use gpu::*;
 
 pub mod prelude {
     pub use crate::{
+        diff_eq::{MethodFn, VV},
         scene_layout::{Disc, Quad, Setup, SetupObject},
         sim::{sun_planet_binary_ccw, Attractor, Body, Dust, System},
         utils::InteractionHandler,

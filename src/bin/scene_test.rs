@@ -2,7 +2,7 @@ use main_gravity::prelude::*;
 use nannou::prelude::*;
 
 struct Model {
-    system: System,
+    system: System<VV>,
     ih: InteractionHandler,
 }
 

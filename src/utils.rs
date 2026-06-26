@@ -7,6 +7,10 @@ use nannou::{
 
 use crate::Uniforms;
 
+pub fn dvec2_to_vec2(val: nannou::geom::DVec2) -> Vec2 {
+    vec2(val.x as f32, val.y as f32)
+}
+
 #[derive(Clone, Copy)]
 pub struct InteractionHandler {
     dragging: bool,
@@ -14,7 +18,7 @@ pub struct InteractionHandler {
     pub rotate: bool,
     pub play: bool,
 
-    pub dt: f32,
+    pub dt: f64,
     pub scale: f32,
     pub camera_translation: Vec2, // Camera drag translation
     window_size: Vec2,            // [width, height] in pixels
@@ -47,7 +51,7 @@ impl InteractionHandler {
         }
     }
 
-    pub fn set_dt(&mut self, dt: f32) -> Self {
+    pub fn set_dt(&mut self, dt: f64) -> Self {
         self.dt = dt;
         *self
     }
@@ -102,14 +106,14 @@ impl InteractionHandler {
             match event {
                 WindowEvent::MouseWheel(scroll, _) => {
                     let scale_factor = match scroll {
-                        MouseScrollDelta::LineDelta(_, y) => 1.0 + y * 0.1,
-                        MouseScrollDelta::PixelDelta(pos) => 1.0 + pos.y as f32 * 0.0001,
+                        MouseScrollDelta::LineDelta(_, y) => 1.0 + y as f64 * 0.1,
+                        MouseScrollDelta::PixelDelta(pos) => 1.0 + pos.y as f64 * 0.0001,
                     };
                     if app.keys.down.contains(&Key::LShift) {
                         self.dt *= scale_factor;
                         println!("Timestep: {}", self.dt);
                     } else {
-                        self.scale *= scale_factor;
+                        self.scale *= scale_factor as f32;
                         println!("Scale: {}", self.scale);
                     }
                 }

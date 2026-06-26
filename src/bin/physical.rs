@@ -2,7 +2,7 @@ use main_gravity::prelude::*;
 use nannou::prelude::*;
 
 struct Model {
-    system: System,
+    system: System<VV>,
     ih: InteractionHandler,
 }
 
@@ -50,7 +50,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
         .update(model.ih.dt, 10, Some(device), Some(queue));
 
     let com = model.system.center_of_mass();
-    let planet = model.system.get_body(1).unwrap();
+    let planet = model.system.get_attractor(1).unwrap();
     let planet_angle = (planet.position() - com).angle();
 
     model.ih.rotation_angle = -planet_angle;

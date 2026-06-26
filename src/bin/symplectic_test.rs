@@ -18,7 +18,10 @@ struct StateVec {
 // -> vec![x1, y1, x2, y2, ... , vx1, vy1, vx2, vy2, ...] for each body in the system
 
 impl StateVec {
-    fn from_system(system: &System) -> Self {
+    fn from_system<M>(system: &System<M>) -> Self
+    where
+        M: OrdinaryNumericalMethod<f64, Vec<f64>> + MethodFn<M, f64>,
+    {
         let mut positions = Vec::new();
         let mut velocities = Vec::new();
 
@@ -231,7 +234,10 @@ struct Everything {
 }
 
 impl Everything {
-    fn new(system: &System) -> Self {
+    fn new<M>(system: &System<M>) -> Self
+    where
+        M: OrdinaryNumericalMethod<f64, Vec<f64>> + MethodFn<M, f64>,
+    {
         let mut colors = vec![
             DARKVIOLET,
             DEEPPINK,
@@ -342,7 +348,7 @@ fn main() {
 }
 
 #[allow(dead_code)]
-fn orbit_system() -> System {
+fn orbit_system() -> System<VV> {
     let mut system = System::new();
 
     let mut planet = Attractor::new(Vec2::ZERO, Vec2::ZERO, 500.0, 120.0);
@@ -359,7 +365,7 @@ fn orbit_system() -> System {
 }
 
 #[allow(dead_code)]
-fn figure_8() -> System {
+fn figure_8() -> System<VV> {
     // (-1.0, 0.0), ( 0.3471168881,  0.5327249454)
     // ( 1.0, 0.0), ( 0.3471168881,  0.5327249454)
     // ( 0.0, 0.0), (-0.6942337762, -1.0654498908)
@@ -393,10 +399,10 @@ fn figure_8() -> System {
 
 struct Model {
     ih: InteractionHandler,  // For user interaction
-    system: System,          // Your original system
+    system: System<VV>,      // Your original system
     everything: Everything,  // All the methods and data
     data: Vec<Vec<Vec2>>,    // Trail data for original system
-    current_time: f32,       // Current simulation time
+    current_time: f64,       // Current simulation time
     max_trail_length: usize, // Limit trail length for performance
 }
 

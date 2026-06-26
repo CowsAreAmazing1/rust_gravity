@@ -10,7 +10,7 @@ fn main() {
 }
 
 struct Model {
-    system: System,
+    system: System<VV>,
     ih: InteractionHandler,
 }
 

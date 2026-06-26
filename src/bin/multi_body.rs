@@ -6,7 +6,7 @@ fn main() {
 }
 
 struct Model {
-    system: System,
+    system: System<VV>,
 }
 
 fn model(app: &App) -> Model {

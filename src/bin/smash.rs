@@ -2,7 +2,7 @@ use main_gravity::prelude::*;
 use nannou::prelude::*;
 
 struct Model {
-    system: System,
+    system: System<VV>,
     ih: InteractionHandler,
 }
 
@@ -17,11 +17,11 @@ fn model(app: &App) -> Model {
 
     let mut system = System::new();
 
-    let attractor = Attractor::new(vec2(-500.0, 0.0), vec2(5.0, 0.0), 100.0, 0.0);
+    let attractor = Attractor::new(vec2(-500.0, 0.0), vec2(3.0, 0.0), 100.0, 0.0);
     system.add_attractor(attractor);
     let attractor = Attractor::new(vec2(-500.0, 10.0), vec2(5.0, 0.0), 100.0, 0.0);
     system.add_attractor(attractor);
-    let attractor = Attractor::new(vec2(-500.0, -13.0), vec2(5.0, 0.0), 100.0, 0.0);
+    let attractor = Attractor::new(vec2(-500.0, -13.0), vec2(4.0, 0.0), 100.0, 0.0);
     system.add_attractor(attractor);
 
     let mut setup = Setup::new();

@@ -4,9 +4,9 @@ use main_gravity::prelude::*;
 use nannou::glam::Vec2;
 use plotters::prelude::*;
 
-fn system_setup(pos_mul: f32, vel_mul: f32) -> System {
+fn system_setup(pos_mul: f32, vel_mul: f32) -> System<VV> {
     let mut system = sun_planet_binary_ccw(100.0, 5.0);
-    let planet = system.get_body(1).unwrap();
+    let planet = system.get_attractor(1).unwrap();
 
     let dust = Dust::new(pos_mul * planet.position(), vel_mul * planet.velocity());
     system.add_dust(dust);
@@ -89,8 +89,8 @@ fn simulate_dust(pos_mul: f32, vel_mul: f32, planet_orbit_radius: f32) -> SimRes
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let planet_orbit_radius = sun_planet_binary_ccw(100.0, 5.0)
-        .get_body(1)
+    let planet_orbit_radius = sun_planet_binary_ccw::<VV>(100.0, 5.0)
+        .get_attractor(1)
         .unwrap()
         .position()
         .length();
