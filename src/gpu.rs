@@ -85,20 +85,25 @@ struct DispatchParams {
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable, Debug)]
 pub struct GpuAttractor {
-    position: [f32; 2],
+    stages: [[f32; 2]; 4],
+    // position: [f32; 2],
     mass: f32,
     _padding: f32,
 }
 
 impl GpuAttractor {
-    pub fn new(position: Vec2, mass: f32) -> Self {
+    pub fn new(stages: [[f32; 2]; 4], mass: f32) -> Self {
         GpuAttractor {
-            position: [position.x, position.y],
+            stages,
             mass,
             _padding: 0.0,
         }
     }
 }
+
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable, Debug)]
+struct StagePositions([[f32; 2]; 4]);
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable, Debug)]

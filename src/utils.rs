@@ -107,7 +107,7 @@ impl InteractionHandler {
                 WindowEvent::MouseWheel(scroll, _) => {
                     let scale_factor = match scroll {
                         MouseScrollDelta::LineDelta(_, y) => 1.0 + y as f64 * 0.1,
-                        MouseScrollDelta::PixelDelta(pos) => 1.0 + pos.y as f64 * 0.0001,
+                        MouseScrollDelta::PixelDelta(pos) => 1.0 + pos.y * 0.0001,
                     };
                     if app.keys.down.contains(&Key::LShift) {
                         self.dt *= scale_factor;

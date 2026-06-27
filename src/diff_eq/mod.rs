@@ -1,8 +1,7 @@
-use differential_equations::{
-    methods::{ExplicitRungeKutta, Fixed, Ordinary, SymplecticIntegrator},
-    ode::{OrdinaryNumericalMethod, ODE},
-    traits::Real,
-};
+pub mod gpuable;
+pub mod not_gpuable;
+
+use differential_equations::ode::{OrdinaryNumericalMethod, ODE};
 use nannou::{
     prelude::*,
     wgpu::{Device, Queue},
@@ -13,34 +12,44 @@ use crate::{
     GpuAttractor, GpuState,
 };
 
-pub type VV = SymplecticIntegrator<Ordinary, Fixed, f64, Vec<f64>, 2>;
-pub type RK4 = ExplicitRungeKutta<Ordinary, Fixed, f64, Vec<f64>, 4, 4, 4>;
-
-pub trait MethodFn<M, T>
+pub trait MethodFn<M>
 where
-    M: OrdinaryNumericalMethod<T, Vec<T>>,
-    T: Real,
+    M: OrdinaryNumericalMethod<f64, Vec<f64>>,
 {
-    fn method_fn() -> fn(T) -> M;
+    fn method_fn() -> fn(f64) -> M;
 }
 
-impl<T> MethodFn<SymplecticIntegrator<Ordinary, Fixed, T, Vec<T>, 2>, T>
-    for SymplecticIntegrator<Ordinary, Fixed, T, Vec<T>, 2>
+pub trait AllowedMethod<M>: OrdinaryNumericalMethod<f64, Vec<f64>> + MethodFn<M>
 where
-    T: Real,
+    M: OrdinaryNumericalMethod<f64, Vec<f64>> + MethodFn<M>,
 {
-    fn method_fn() -> fn(T) -> SymplecticIntegrator<Ordinary, Fixed, T, Vec<T>, 2> {
-        |dt| SymplecticIntegrator::velocity_verlet(dt)
-    }
-}
+    /// General, non-GPU update function for the system state using any specified numerical method.
+    fn update(
+        state: &State,
+        ode: &GravitationalODE,
+        dt: f64,
+        sub_steps: u32,
+        device: Option<&Device>,
+        queue: Option<&Queue>,
+        gpu_state: Option<&mut GpuState>,
+    ) -> Vec<(Vec2, Vec2)> {
+        let sub_dt = dt / sub_steps as f64;
+        let mut method = (M::method_fn())(sub_dt);
 
-impl<T> MethodFn<ExplicitRungeKutta<Ordinary, Fixed, T, Vec<T>, 4, 4, 4>, T>
-    for ExplicitRungeKutta<Ordinary, Fixed, T, Vec<T>, 4, 4, 4>
-where
-    T: Real,
-{
-    fn method_fn() -> fn(T) -> ExplicitRungeKutta<Ordinary, Fixed, T, Vec<T>, 4, 4, 4> {
-        |dt| ExplicitRungeKutta::rk4(dt)
+        let y0 = &state.to_vec();
+        method.init(ode, 0.0, dt, y0).unwrap();
+
+        for _ in 0..sub_steps {
+            // Main update step
+            method.step(&ode).expect("step failed");
+
+            if device.is_some() || queue.is_some() || gpu_state.is_some() {
+                panic!("GPU state update not implemented for this integration method");
+            }
+        }
+
+        let state = State::from_vec(method.y());
+        state.out()
     }
 }
 
@@ -115,7 +124,7 @@ impl ODE<f64, Vec<f64>> for GravitationalODE {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug)]
 pub struct State {
     positions: Vec<f64>,
     velocities: Vec<f64>,
@@ -131,7 +140,7 @@ impl State {
 
     pub fn from_system<M>(system: &System<M>) -> Self
     where
-        M: OrdinaryNumericalMethod<f64, Vec<f64>> + MethodFn<M, f64>,
+        M: AllowedMethod<M>,
     {
         let mut positions = Vec::new();
         let mut velocities = Vec::new();
@@ -164,7 +173,7 @@ impl State {
         vec
     }
 
-    fn from_vec(vec: &Vec<f64>) -> Self {
+    fn from_vec(vec: &[f64]) -> Self {
         Self {
             positions: vec[..vec.len() / 2].to_vec(),
             velocities: vec[vec.len() / 2..].to_vec(),
@@ -188,74 +197,13 @@ impl State {
         out
     }
 
-    fn vec_to_attractors(vec: &Vec<f64>, masses: &Vec<f64>) -> Vec<GpuAttractor> {
-        let positions = vec[..vec.len() / 2]
-            .chunks(2)
-            .map(|chk| vec2(chk[0] as f32, chk[1] as f32));
-        positions
-            .zip(masses)
-            .map(|(pos, mass)| GpuAttractor::new(pos, *mass as f32))
-            .collect()
-    }
-}
-
-/// Handles numerical integration of the ODE by adapting a crate::System to work with differential_equations.
-/// Responsible for integrating the system by a single timestep
-pub struct DiffEq<M>
-where
-    M: OrdinaryNumericalMethod<f64, Vec<f64>>,
-{
-    method: Option<M>,
-    stages: Vec<Vec<f64>>,
-}
-
-impl<M> DiffEq<M>
-where
-    M: OrdinaryNumericalMethod<f64, Vec<f64>> + MethodFn<M, f64>,
-{
-    pub fn new() -> Self {
-        Self {
-            method: None,
-            stages: Vec::new(),
-        }
-    }
-
-    // pub fn init(&mut self, dt: f64, state: &State, ode: &GravitationalODE) {
-
+    // fn vec_to_attractors(vec: &Vec<f64>, masses: &Vec<f64>) -> Vec<GpuAttractor> {
+    //     let positions = vec[..vec.len() / 2]
+    //         .chunks(2)
+    //         .map(|chk| vec2(chk[0] as f32, chk[1] as f32));
+    //     positions
+    //         .zip(masses)
+    //         .map(|(pos, mass)| GpuAttractor::new(pos, *mass as f32))
+    //         .collect()
     // }
-
-    pub fn update(
-        &mut self,
-        state: &State,
-        ode: &GravitationalODE,
-        dt: f64,
-        sub_steps: u32,
-        device: Option<&Device>,
-        queue: Option<&Queue>,
-        mut gpu_state: Option<&mut GpuState>,
-    ) -> Vec<(Vec2, Vec2)> {
-        let sub_dt = dt / sub_steps as f64;
-        let mut method = (M::method_fn())(sub_dt);
-
-        let y0 = &state.to_vec();
-        method.init(ode, 0.0, dt, y0).unwrap();
-        // self.method = Some(method);
-
-        for _ in 0..sub_steps {
-            method.step(&ode).unwrap();
-            self.stages = method.stage_states().unwrap().into();
-
-            // Run compute shader for dust
-            if let (Some(device), Some(queue)) = (device, queue) {
-                let attractors = State::vec_to_attractors(&method.y(), &ode.masses);
-                if let Some(ref mut gpu_state) = gpu_state {
-                    gpu_state.update(sub_dt as f32, device, queue, &attractors);
-                }
-            }
-        }
-
-        let state = State::from_vec(&method.y());
-        self.method = Some(method);
-        state.out()
-    }
 }

@@ -7,7 +7,7 @@ struct Particle {
 @group(1) @binding(0) var<storage, read_write> colors: array<f32>;
 
 struct Attractor {
-    pos: vec2<f32>,
+    poses: array<vec2<f32>, 4>,
     mass: f32,
     _padding: f32,
 }
@@ -22,7 +22,7 @@ struct DispatchParams {
 };
 @group(3) @binding(0) var<uniform> params: DispatchParams;
 
-fn calculate_acceleration(pos: vec2<f32>) -> vec2<f32> {
+fn calculate_acceleration(pos: vec2<f32>, stage_index: u32) -> vec2<f32> {
     let num_attractors = arrayLength(&attractors);
     var acc = vec2<f32>(0.0, 0.0);
 
@@ -42,37 +42,53 @@ fn calculate_acceleration(pos: vec2<f32>) -> vec2<f32> {
     return acc;
 }
 
-fn rk4_step(pos: vec2<f32>, vel: vec2<f32>, dt: f32) -> Particle {
-    // k1 = f(t, y)
-    let k1_vel = vel;
-    let k1_acc = calculate_acceleration(pos);
+fn vv_step(pos: vec2<f32>, vel: vec2<f32>, dt: f32) -> Particle {
+    // let acc = calculate_acceleration(pos);
+    // let new_vel = vel + acc * dt;
+    // let new_pos = pos + new_vel * dt;
 
-    // k2 = f(t + dt/2, y + k1*dt/2)
-    let pos_k2 = pos + k1_vel * (dt * 0.5);
-    let vel_k2 = vel + k1_acc * (dt * 0.5);
-    let k2_vel = vel_k2;
-    let k2_acc = calculate_acceleration(pos_k2);
-
-    // k3 = f(t + dt/2, y + k2*dt/2)
-    let pos_k3 = pos + k2_vel * (dt * 0.5);
-    let vel_k3 = vel + k2_acc * (dt * 0.5);
-    let k3_vel = vel_k3;
-    let k3_acc = calculate_acceleration(pos_k3);
-
-    // k4 = f(t + dt, y + k3*dt)
-    let pos_k4 = pos + k3_vel * dt;
-    let vel_k4 = vel + k3_acc * dt;
-    let k4_vel = vel_k4;
-    let k4_acc = calculate_acceleration(pos_k4);
-
-    let final_pos = pos + (dt / 6.0) * (k1_vel + 2.0 * k2_vel + 2.0 * k3_vel + k4_vel);
-    let final_vel = vel + (dt / 6.0) * (k1_acc + 2.0 * k2_acc + 2.0 * k3_acc + k4_acc);
+    let acc = calculate_acceleration(pos);
+    let new_pos = pos + vel * dt + acc * dt * dt * 0.5;
+    let new_acc = calculate_acceleration(new_pos);
+    let new_vel = vel + (acc + new_acc) * dt * 0.5;
 
     var result: Particle;
-    result.pos = final_pos;
-    result.vel = final_vel;
+    result.pos = new_pos;
+    result.vel = new_vel;
     return result;
 }
+
+// fn rk4_step(pos: vec2<f32>, vel: vec2<f32>, dt: f32) -> Particle {
+//     // k1 = f(t, y)
+//     let k1_vel = vel;
+//     let k1_acc = calculate_acceleration(pos);
+
+//     // k2 = f(t + dt/2, y + k1*dt/2)
+//     let pos_k2 = pos + k1_vel * (dt * 0.5);
+//     let vel_k2 = vel + k1_acc * (dt * 0.5);
+//     let k2_vel = vel_k2;
+//     let k2_acc = calculate_acceleration(pos_k2);
+
+//     // k3 = f(t + dt/2, y + k2*dt/2)
+//     let pos_k3 = pos + k2_vel * (dt * 0.5);
+//     let vel_k3 = vel + k2_acc * (dt * 0.5);
+//     let k3_vel = vel_k3;
+//     let k3_acc = calculate_acceleration(pos_k3);
+
+//     // k4 = f(t + dt, y + k3*dt)
+//     let pos_k4 = pos + k3_vel * dt;
+//     let vel_k4 = vel + k3_acc * dt;
+//     let k4_vel = vel_k4;
+//     let k4_acc = calculate_acceleration(pos_k4);
+
+//     let final_pos = pos + (dt / 6.0) * (k1_vel + 2.0 * k2_vel + 2.0 * k3_vel + k4_vel);
+//     let final_vel = vel + (dt / 6.0) * (k1_acc + 2.0 * k2_acc + 2.0 * k3_acc + k4_acc);
+
+//     var result: Particle;
+//     result.pos = final_pos;
+//     result.vel = final_vel;
+//     return result;
+// }
 
 @compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
@@ -85,7 +101,8 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let p = particles[i];
     let dt = params.dt;
 
-    let integrated = rk4_step(p.pos, p.vel, dt);
+    // let integrated = rk4_step(p.pos, p.vel, dt);
+    let integrated = vv_step(p.pos, p.vel, dt);
 
     particles[i] = integrated;
 

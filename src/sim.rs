@@ -1,13 +1,12 @@
 use std::time::Instant;
 
-use differential_equations::ode::OrdinaryNumericalMethod;
 use nannou::{
     prelude::*,
     wgpu::{Device, Queue},
 };
 
 use crate::{
-    diff_eq::{DiffEq, GravitationalODE, MethodFn, State},
+    diff_eq::{AllowedMethod, GravitationalODE, State},
     gpu, GpuAttractor, GpuColor, GpuDust, GpuState,
 };
 
@@ -163,18 +162,18 @@ impl Body for Dust {
 /// Physics system that manages bodies and integration
 pub struct System<M>
 where
-    M: OrdinaryNumericalMethod<f64, Vec<f64>> + MethodFn<M, f64>,
+    M: AllowedMethod<M>,
 {
     pub attractors: Vec<Attractor>,
     pub dust: Vec<Dust>,
-    pub integrator: DiffEq<M>,
     pub gpu_state: Option<GpuState>,
     pub steps: u32,
+    _data: std::marker::PhantomData<M>,
 }
 
 impl<M> Clone for System<M>
 where
-    M: OrdinaryNumericalMethod<f64, Vec<f64>> + MethodFn<M, f64>,
+    M: AllowedMethod<M>,
 {
     fn clone(&self) -> Self {
         if self.gpu_state.is_some() {
@@ -182,26 +181,26 @@ where
         }
 
         System {
-            attractors: self.attractors.iter().map(|b| b.clone()).collect(),
+            attractors: self.attractors.to_vec(),
             dust: self.dust.clone(),
-            integrator: DiffEq::new(),
             gpu_state: None,
             steps: self.steps,
+            _data: std::marker::PhantomData,
         }
     }
 }
 
 impl<M> System<M>
 where
-    M: OrdinaryNumericalMethod<f64, Vec<f64>> + MethodFn<M, f64>,
+    M: AllowedMethod<M>,
 {
     pub fn new() -> Self {
         System {
             attractors: Vec::new(),
             dust: Vec::new(),
-            integrator: DiffEq::new(),
             gpu_state: None,
             steps: 0,
+            _data: std::marker::PhantomData,
         }
     }
 
@@ -256,7 +255,7 @@ where
         let state = State::from_system(self);
 
         // self.integrator.init(dt, &state, &ode);
-        let out = self.integrator.update(
+        let out = M::update(
             &state,
             &ode,
             dt,
@@ -297,7 +296,11 @@ where
     pub fn get_attractors_gpu(&self) -> Vec<GpuAttractor> {
         self.attractors
             .iter()
-            .map(|b| GpuAttractor::new(b.position(), b.mass()))
+            .map(|b| {
+                let mut stages = [[0.0; 2]; 4];
+                stages[0] = b.position().into();
+                GpuAttractor::new(stages, b.mass())
+            })
             .collect()
     }
     pub fn get_dusts(&self) -> &[Dust] {
@@ -413,7 +416,7 @@ where
 
 impl<M> Default for System<M>
 where
-    M: OrdinaryNumericalMethod<f64, Vec<f64>> + MethodFn<M, f64>,
+    M: AllowedMethod<M>,
 {
     fn default() -> Self {
         Self::new()
@@ -422,7 +425,7 @@ where
 
 pub fn sun_planet_binary<M>(sun_mass: f32, planet_mass: f32, planet_clockwise: bool) -> System<M>
 where
-    M: OrdinaryNumericalMethod<f64, Vec<f64>> + MethodFn<M, f64>,
+    M: AllowedMethod<M>,
 {
     let mut system = System::new();
 
@@ -438,14 +441,14 @@ where
 
 pub fn sun_planet_binary_cw<M>(sun_mass: f32, planet_mass: f32) -> System<M>
 where
-    M: OrdinaryNumericalMethod<f64, Vec<f64>> + MethodFn<M, f64>,
+    M: AllowedMethod<M>,
 {
     sun_planet_binary(sun_mass, planet_mass, true)
 }
 
 pub fn sun_planet_binary_ccw<M>(sun_mass: f32, planet_mass: f32) -> System<M>
 where
-    M: OrdinaryNumericalMethod<f64, Vec<f64>> + MethodFn<M, f64>,
+    M: AllowedMethod<M>,
 {
     sun_planet_binary(sun_mass, planet_mass, false)
 }

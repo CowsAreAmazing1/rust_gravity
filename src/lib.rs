@@ -23,7 +23,11 @@ pub use gpu::*;
 
 pub mod prelude {
     pub use crate::{
-        diff_eq::{MethodFn, VV},
+        diff_eq::{
+            gpuable::VV,
+            not_gpuable::{DOP853, EULER, RK4, SSPRK3},
+            AllowedMethod,
+        },
         scene_layout::{Disc, Quad, Setup, SetupObject},
         sim::{sun_planet_binary_ccw, Attractor, Body, Dust, System},
         utils::InteractionHandler,

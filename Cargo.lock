@@ -577,7 +577,7 @@ dependencies = [
 [[package]]
 name = "differential-equations"
 version = "0.6.1"
-source = "git+https://github.com/CowsAreAmazing1/differential-equations.git#bcdec27498ec624ba4102723f2c871fb2002165a"
+source = "git+https://github.com/CowsAreAmazing1/differential-equations.git#f6b8ea25e8005d5a505a1fa96320c8b2b78fc403"
 dependencies = [
  "differential-equations-derive",
  "simba 0.9.1",
@@ -586,7 +586,7 @@ dependencies = [
 [[package]]
 name = "differential-equations-derive"
 version = "0.2.0"
-source = "git+https://github.com/CowsAreAmazing1/differential-equations.git#bcdec27498ec624ba4102723f2c871fb2002165a"
+source = "git+https://github.com/CowsAreAmazing1/differential-equations.git#f6b8ea25e8005d5a505a1fa96320c8b2b78fc403"
 dependencies = [
  "proc-macro2",
  "quote",

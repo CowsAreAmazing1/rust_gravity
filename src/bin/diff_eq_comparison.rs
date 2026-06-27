@@ -26,10 +26,7 @@ const STATE_SIZE: usize = 6;
 make_state!(6);
 
 impl StateVec {
-    fn from_system<M>(system: &System<M>) -> Self
-    where
-        M: OrdinaryNumericalMethod<f64, Vec<f64>> + MethodFn<M, f64>,
-    {
+    fn from_system<M: AllowedMethod<M>>(system: &System<M>) -> Self {
         let mut positions = [0.0; STATE_SIZE];
         let mut velocities = [0.0; STATE_SIZE];
 
@@ -224,10 +221,7 @@ struct Everything {
 }
 
 impl Everything {
-    fn new<M>(system: &System<M>) -> Self
-    where
-        M: OrdinaryNumericalMethod<f64, Vec<f64>> + MethodFn<M, f64>,
-    {
+    fn new<M: AllowedMethod<M>>(system: &System<M>) -> Self {
         let mut colors = vec![
             DARKVIOLET,
             DEEPPINK,
@@ -426,7 +420,7 @@ fn main() {
 }
 
 #[allow(dead_code)]
-fn orbit_system() -> System<VV> {
+fn orbit_system() -> System<Integrator> {
     let mut system = System::new();
 
     let mut planet = Attractor::new(Vec2::ZERO, Vec2::ZERO, 500.0, 120.0);
@@ -443,7 +437,7 @@ fn orbit_system() -> System<VV> {
 }
 
 #[allow(dead_code)]
-fn figure_8() -> System<VV> {
+fn figure_8() -> System<Integrator> {
     // (-1.0, 0.0), ( 0.3471168881,  0.5327249454)
     // ( 1.0, 0.0), ( 0.3471168881,  0.5327249454)
     // ( 0.0, 0.0), (-0.6942337762, -1.0654498908)
@@ -475,9 +469,11 @@ fn figure_8() -> System<VV> {
     system
 }
 
+type Integrator = DOP853;
+
 struct Model {
     ih: InteractionHandler,            // For user interaction
-    system: System<VV>,                // Your original system
+    system: System<Integrator>,        // Your original system
     everything: Everything,            // All the methods and data
     data: [Vec<Vec2>; STATE_SIZE / 2], // Trail data for original system
     current_time: f64,                 // Current simulation time
@@ -526,26 +522,15 @@ fn model(app: &App) -> Model {
     }
 }
 
-fn update(app: &App, model: &mut Model, _update: Update) {
-    let window = app.main_window();
-    let queue = window.queue();
-    let device = window.device();
+fn update(_app: &App, model: &mut Model, _update: Update) {
+    model.system.update(model.ih.dt, 5, None, None);
 
-    model
-        .system
-        .update(model.ih.dt, 5, Some(device), Some(queue));
-
-    let masses = model
-        .system
-        .get_masses()
-        .iter()
-        .map(|&m| m as f64)
-        .collect();
+    let masses = model.system.get_masses().to_vec();
     let ode_system = GravitationalODE::new(masses);
 
     model
         .everything
-        .update(&ode_system, model.ih.dt as f64, model.max_trail_length);
+        .update(&ode_system, model.ih.dt, model.max_trail_length);
 
     for i in 0..STATE_SIZE / 2 {
         if let Some(moon) = model.system.get_attractors().get(i) {

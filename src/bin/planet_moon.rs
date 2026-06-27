@@ -6,7 +6,7 @@ fn main() {
 }
 
 struct Model {
-    system: System<VV>,
+    system: System<EULER>,
     ih: InteractionHandler,
 }
 
@@ -31,12 +31,8 @@ fn model(app: &App) -> Model {
     Model { system, ih }
 }
 
-fn update(app: &App, model: &mut Model, _update: Update) {
-    let window = app.main_window();
-    let queue = window.queue();
-    let device = window.device();
-
-    model.system.update(0.5, 5, Some(device), Some(queue));
+fn update(_app: &App, model: &mut Model, _update: Update) {
+    model.system.update(0.5, 5, None, None);
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
