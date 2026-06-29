@@ -9,7 +9,7 @@ use nannou::{
 
 use crate::{
     sim::{Body, System},
-    GpuAttractor, GpuState,
+    GpuState,
 };
 
 pub trait MethodFn<M>
@@ -196,14 +196,4 @@ impl State {
         }
         out
     }
-
-    // fn vec_to_attractors(vec: &Vec<f64>, masses: &Vec<f64>) -> Vec<GpuAttractor> {
-    //     let positions = vec[..vec.len() / 2]
-    //         .chunks(2)
-    //         .map(|chk| vec2(chk[0] as f32, chk[1] as f32));
-    //     positions
-    //         .zip(masses)
-    //         .map(|(pos, mass)| GpuAttractor::new(pos, *mass as f32))
-    //         .collect()
-    // }
 }

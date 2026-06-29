@@ -32,7 +32,7 @@ fn model(app: &App) -> Model {
     system.add_attractor(sun);
     system.add_attractor(planet);
 
-    system.include_setup_random(&setup, 8_000_000);
+    system.include_setup_random(&setup, 5_000_000);
     system.init_gpu(device);
 
     let ih = InteractionHandler::from_rect(&window.rect());
@@ -63,12 +63,16 @@ fn view(app: &App, model: &Model, frame: Frame) {
     let queue = window.queue();
     let texture_view = frame.texture_view();
 
-    let draw: Draw = model.ih.draw(app.draw());
-
     if let Some(gpu_state) = &model.system.gpu_state {
         let uniforms = model.ih.uniform();
         gpu_state.update_uniforms(queue, &uniforms);
     }
+
+    let draw = app.draw();
+    draw.text(&app.fps().to_string())
+        .xy(window.rect().top_left() + vec2(50.0, -50.0))
+        .color(WHITE);
+    let draw: Draw = model.ih.draw(draw);
 
     model
         .system

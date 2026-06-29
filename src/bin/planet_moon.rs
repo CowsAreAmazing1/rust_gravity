@@ -6,7 +6,7 @@ fn main() {
 }
 
 struct Model {
-    system: System<EULER>,
+    system: System<VV>,
     ih: InteractionHandler,
 }
 
@@ -41,10 +41,11 @@ fn view(app: &App, model: &Model, frame: Frame) {
     let queue = window.queue();
     let texture_view = frame.texture_view();
 
-    let draw = app.draw();
+    let draw = model.ih.draw(app.draw());
     draw.background().color(BLACK);
-
-    model.system.draw(&draw, device, queue, texture_view, 1.0);
+    model
+        .system
+        .draw(&draw, device, queue, texture_view, model.ih.scale);
 
     draw.to_frame(app, &frame).unwrap();
 }

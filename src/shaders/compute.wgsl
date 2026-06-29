@@ -16,9 +16,6 @@ struct Attractor {
 struct DispatchParams {
     offset: u32,
     dt: f32,
-    // min_speed: f32,
-    // max_speed: f32,
-    // frame: u32,
 };
 @group(3) @binding(0) var<uniform> params: DispatchParams;
 
@@ -28,15 +25,33 @@ fn calculate_acceleration(pos: vec2<f32>, stage_index: u32) -> vec2<f32> {
 
     for (var a = 0u; a < num_attractors; a++) {
         let attractor = attractors[a];
-        let rel_pos = attractor.pos - pos;
+
+        var attractor_pos: vec2<f32>;
+
+        switch stage_index {
+            case 0u: {
+                attractor_pos = attractor.poses[0];
+            }
+            case 1u: {
+                attractor_pos = attractor.poses[1];
+            }
+            case 2u: {
+                attractor_pos = attractor.poses[2];
+            }
+            default: {
+                attractor_pos = attractor.poses[3];
+            }
+        }
+
+        let rel_pos = attractor_pos - pos;
         let distance_sq = dot(rel_pos, rel_pos);
 
         // Add softening parameter to avoid singularities
-        let softening = 1e-6;
-        let distance = sqrt(distance_sq + softening);
-        let distance_cubed = distance * distance * distance;
+        let softening = 1e-6f;
+        let inv_dist = inverseSqrt(distance_sq); // + softening);
+        let inv_dist3 = inv_dist * inv_dist * inv_dist;
 
-        acc += attractor.mass * rel_pos / distance_cubed;
+        acc += attractor.mass * rel_pos * inv_dist3;
     }
 
     return acc;
@@ -47,9 +62,9 @@ fn vv_step(pos: vec2<f32>, vel: vec2<f32>, dt: f32) -> Particle {
     // let new_vel = vel + acc * dt;
     // let new_pos = pos + new_vel * dt;
 
-    let acc = calculate_acceleration(pos);
+    let acc = calculate_acceleration(pos, 0u);
     let new_pos = pos + vel * dt + acc * dt * dt * 0.5;
-    let new_acc = calculate_acceleration(new_pos);
+    let new_acc = calculate_acceleration(new_pos, 1u);
     let new_vel = vel + (acc + new_acc) * dt * 0.5;
 
     var result: Particle;

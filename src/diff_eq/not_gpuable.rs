@@ -41,7 +41,7 @@ pub type DOP853 = ExplicitRungeKutta<Ordinary, DormandPrince, f64, Vec<f64>, 8, 
 
 impl MethodFn<DOP853> for DOP853 {
     fn method_fn() -> fn(f64) -> DOP853 {
-        |dt| ExplicitRungeKutta::dop853().h_min(dt).h_max(dt)
+        |dt| ExplicitRungeKutta::dop853().h_max(dt).atol(1e10).rtol(1e10)
     }
 }
 impl AllowedMethod<DOP853> for DOP853 {}

@@ -6,7 +6,8 @@ fn main() {
 }
 
 struct Model {
-    system: System<VV>,
+    system: System<DOP853>,
+    ih: InteractionHandler,
 }
 
 fn model(app: &App) -> Model {
@@ -30,15 +31,13 @@ fn model(app: &App) -> Model {
         system.add_attractor(body);
     }
 
-    Model { system }
+    let ih = InteractionHandler::from_rect(&app.window_rect());
+
+    Model { system, ih }
 }
 
-fn update(app: &App, model: &mut Model, _update: Update) {
-    let window = app.main_window();
-    let queue = window.queue();
-    let device = window.device();
-
-    model.system.update(0.2, 5, Some(device), Some(queue));
+fn update(_app: &App, model: &mut Model, _update: Update) {
+    model.system.update(0.2, 5, None, None);
 }
 fn view(app: &App, model: &Model, frame: Frame) {
     let window = app.main_window();
@@ -46,10 +45,10 @@ fn view(app: &App, model: &Model, frame: Frame) {
     let queue = window.queue();
     let texture_view = frame.texture_view();
 
-    let draw = app.draw();
-    draw.background().color(BLACK);
-
-    model.system.draw(&draw, device, queue, texture_view, 1.0);
+    let draw = model.ih.draw(app.draw());
+    model
+        .system
+        .draw(&draw, device, queue, texture_view, model.ih.scale);
 
     draw.to_frame(app, &frame).unwrap();
 }
