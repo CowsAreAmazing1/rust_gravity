@@ -118,6 +118,10 @@ impl InteractionHandler {
                     }
                 }
                 WindowEvent::MousePressed(MouseButton::Left) => {
+                    if app.keys.down.contains(&Key::LControl) {
+                        self.camera_translation = Vec2::ZERO;
+                        self.scale = 1.0;
+                    }
                     self.dragging = true;
                 }
                 WindowEvent::MouseReleased(MouseButton::Left) => {
@@ -145,6 +149,10 @@ impl InteractionHandler {
                             "Simulation {}",
                             if self.play { "resumed" } else { "paused" }
                         )
+                    }
+                    Key::T => {
+                        self.dt *= -1.0;
+                        println!("Timestep reversed: {}", self.dt);
                     }
                     _ => {}
                 },

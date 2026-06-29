@@ -17,15 +17,58 @@ fn model(app: &App) -> Model {
 
     let mut system = System::new();
 
-    let attractor = Attractor::new(vec2(-500.0, 0.0), vec2(3.0, 0.0), 100.0, 0.0);
-    system.add_attractor(attractor);
-    let attractor = Attractor::new(vec2(-500.0, 10.0), vec2(5.0, 0.0), 100.0, 0.0);
-    system.add_attractor(attractor);
-    let attractor = Attractor::new(vec2(-500.0, -13.0), vec2(4.0, 0.0), 100.0, 0.0);
-    system.add_attractor(attractor);
+    let targets = [
+        3.0 * vec2(50.0, 50.0),
+        3.0 * vec2(50.0, -50.0),
+        3.0 * vec2(-50.0, -50.0),
+        3.0 * vec2(-50.0, 50.0),
+        3.0 * vec2(50.0, 0.0),
+        3.0 * vec2(0.0, 50.0),
+        3.0 * vec2(0.0, -50.0),
+        3.0 * vec2(-50.0, 0.0),
+    ];
+
+    for i in 0..1 {
+        let t = 500.0 + 100.0 * i as f32;
+
+        let pos = vec2(-t, 0.0);
+        let vel = (targets[0] - pos).normalize() * 10.0;
+        let mut attractor = Attractor::new(pos, vel, 100.0, 0.0);
+        attractor.set_orbit(Vec2::ZERO, 100.0, false);
+        system.add_attractor(attractor);
+
+        let pos = vec2(0.0, t);
+        let vel = (targets[1] - pos).normalize() * 10.0;
+        let mut attractor = Attractor::new(pos, vel, 100.0, 0.0);
+        attractor.set_orbit(Vec2::ZERO, 100.0, false);
+        system.add_attractor(attractor);
+
+        let pos = vec2(t, 0.0);
+        let vel = (targets[2] - pos).normalize() * 10.0;
+        let mut attractor = Attractor::new(pos, vel, 100.0, 0.0);
+        attractor.set_orbit(Vec2::ZERO, 100.0, false);
+        system.add_attractor(attractor);
+
+        let pos = vec2(0.0, -t);
+        let vel = (targets[3] - pos).normalize() * 10.0;
+        let mut attractor = Attractor::new(pos, vel, 100.0, 0.0);
+        attractor.set_orbit(Vec2::ZERO, 100.0, false);
+        system.add_attractor(attractor);
+    }
+
+    let center = Attractor::new(Vec2::ZERO, Vec2::ZERO, 1000.0, 200.0);
 
     let mut setup = Setup::new();
-    setup.add(Disc::new().radius(20.0).center_velocity_xy(-5.0, 0.0));
+    targets.iter().for_each(|&target| {
+        setup.add(
+            Quad::new()
+                .square(70.0)
+                .center_position(target)
+                .orbit_attractor(&center, false),
+        );
+    });
+
+    system.add_attractor(center);
 
     system.include_setup_random(&setup, 6_000_000);
     system.init_gpu(device);
