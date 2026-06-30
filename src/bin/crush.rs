@@ -17,45 +17,21 @@ fn model(app: &App) -> Model {
 
     let mut system = System::new();
 
-    let size = 100.0;
-    let scale = 4.0;
+    let num = 8;
+    let scale = 3.0;
+    for i in 0..num {
+        let t = map_range(i, 0, num, 0.0, TAU);
 
-    for i in 0..7 {
-        let t = 500.0 + 300.0 * i as f32;
-
-        let mass = -100.0 * if i % 2 == 0 { -1.0 } else { 1.0 };
-
-        let mut pos = vec2(-t, 0.0);
+        let pos: Vec2 = 300.0 * Vec2::from(t.sin_cos());
         let vel = -scale * pos.normalize();
-        pos += vec2(0.0, size);
-        let attractor = Attractor::new(pos, vel, mass, 0.0);
-        system.add_attractor(attractor);
-
-        let mut pos = vec2(0.0, t);
-        let vel = -scale * pos.normalize();
-        pos += vec2(size, 0.0);
-        let attractor = Attractor::new(pos, vel, mass, 0.0);
-        system.add_attractor(attractor);
-
-        let mut pos = vec2(t, 0.0);
-        let vel = -scale * pos.normalize();
-        pos += vec2(0.0, -size);
-        let attractor = Attractor::new(pos, vel, mass, 0.0);
-        system.add_attractor(attractor);
-
-        let mut pos = vec2(0.0, -t);
-        let vel = -scale * pos.normalize();
-        pos += vec2(-size, 0.0);
-        let attractor = Attractor::new(pos, vel, mass, 0.0);
+        let mut attractor = Attractor::new(pos, vel, -10.0, 0.0);
+        attractor.set_orbit(Vec2::ZERO, 200.0, true);
+        *attractor.velocity_mut() = attractor.velocity() + vel;
         system.add_attractor(attractor);
     }
 
-    // let center = Attractor::new(Vec2::ZERO, Vec2::ZERO, 1000.0, 200.0);
-
     let mut setup = Setup::new();
-    setup.add(Quad::new().square(size));
-
-    // system.add_attractor(center);
+    setup.add(Disc::new().radius(100.0));
 
     system.include_setup_random(&setup, 8_000_000);
     system.init_gpu(device);

@@ -22,7 +22,7 @@ pub trait Body {
     fn draw(&self, draw: &Draw, scale: f32) {
         draw.ellipse()
             .xy(self.position())
-            .radius(self.mass().sqrt() * 0.5 / scale)
+            .radius(self.mass().abs().sqrt() * 0.5 / scale)
             .color(self.color());
     }
 }
